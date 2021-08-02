@@ -5,7 +5,7 @@ import {form} from 'https://cdn.jsdelivr.net/gh/marcodpt/form@0.0.5/index.js'
 import {table} from 'https://cdn.jsdelivr.net/gh/marcodpt/table@0.0.9/index.js'
 import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
 
-const D = {
+const D = ({tests_id}) => ({
   index: {
     type: 'integer',
     title: 'Id'
@@ -50,7 +50,8 @@ const D = {
   },
   tests: {
     title: 'Tests',
-    type: 'integer'
+    type: 'integer',
+    href: `#/get/tests/${tests_id}/{id}`
   },
   vars: {
     title: 'Vars',
@@ -58,7 +59,7 @@ const D = {
     default: '',
     format: 'text'
   }
-}
+})
 
 const GlobalActions = {
   post: {
@@ -94,11 +95,11 @@ const back = () => {history.back()}
 const fromStr = str => query(str.split('\n').join('&'))
 const toStr = X => query(X).split('&').join('\n')
 
-const genSchema = (title, required) => ({
+const genSchema = (title, required, context) => ({
   type: 'object',
   title: title,
   properties: required.reduce((P, key) => {
-    P[key] = {...D[key]}
+    P[key] = {...D(context || {})[key]}
     return P
   }, {}),
   required: required
@@ -117,7 +118,8 @@ const getTable = ({
   name,
   Fields,
   Links,
-  data
+  data,
+  context
 }) => ({
   sort: true,
   search: true,
@@ -130,7 +132,7 @@ const getTable = ({
     type: 'array',
     title: name,
     items: {
-      ...genSchema('', ['index'].concat(Fields)),
+      ...genSchema('', ['index'].concat(Fields), context),
       links: Object.keys(Links)
         .filter(key => RowActions[key] != null)
         .map(key => ({
@@ -160,9 +162,10 @@ const postForm = ({
   name,
   Fields,
   getInfo,
-  submit
+  submit,
+  context
 }) => ({
-  schema: genSchema(`Insert ${name}`, Fields),
+  schema: genSchema(`Insert ${name}`, Fields, context),
   back: back,
   submit: M => {
     submit(M)
@@ -184,9 +187,12 @@ const putForm = ({
   Fields,
   Row,
   getInfo,
-  submit
+  submit,
+  context
 }) => ({
-  schema: addProp('default', genSchema(`Edit ${name}`, ['label']), Row),
+  schema: addProp('default',
+    genSchema(`Edit ${name}`, ['label'], context)
+  , Row),
   back: back,
   submit: M => {
     submit(M)
@@ -249,6 +255,61 @@ const deleteForm = ({
     }
   }
 }
+
+const submitDelete = X => Ids => {
+  Ids.reverse()
+  Ids.forEach(id => {
+    X.splice(id, 1)
+  })
+}
+
+const Tests = () => ({
+  singular: 'Test',
+  plural: 'Tests',
+  Fields: {
+    label: {
+      type: 'string',
+      title: 'Label',
+      minLength: 1,
+      maxLength: 255,
+      default: ''
+    },
+    requests: {
+      type: 'integer',
+      title: 'Requests',
+      href: '#/get/requests/{id}'
+    }
+  },
+  Links: {
+    delete: '#/delete/tests/{id}',
+    put: '#/put/tests/{id}',
+    post: '#/post/tests'
+  },
+  data: Tests.map(row => ({
+    label: row.label,
+    requests: row.requests.length
+  })),
+  getInfo: Row => Row.label,
+  post: M => Tests.push({
+    label: M.label,
+    requests: [],
+    env: {}
+  }),
+  put: (M, id) => {
+    Tests[id] = {
+      ...Tests[id],
+      ...M
+    }
+  },
+  delete: submitDelete(Tests)
+})
+
+const Requests = ({
+  tests_id
+}) => ({
+  singular: 'Request',
+  plural: 'Requests'
+})
 
 const Routes = [
   {
@@ -313,64 +374,44 @@ const Routes = [
   }, {
     route: '/get/requests/:id',
     comp: table,
-    mount: ({id}) => ({
-      ...D.table,
-      schema: {
-        type: 'array',
-        title: 'Requests: '+Tests[id].label,
-        items: {
-          type: 'object',
-          properties: {
-            method: D.method,
-            url: D.url,
-            params: D.params,
-            tests: {
-              ...D.tests,
-              href: `#/get/tests/${id}/{id}`
-            },
-            vars: D.vars
-          },
-          links: [
-            {
-              ...D.delete,
-              href: `#/delete/requests/${id}/{id}`
-            }, {
-              ...D.put,
-              href: `#/put/requests/${id}/{id}`
-            }
-          ]
-        },
-        links: [
-          {
-            ...D.post,
-            href: `#/post/requests/${id}`
-          }
-        ]
+    mount: ({id}) => getTable({
+      name: 'Requests: '+Tests[id].label,
+      Fields: [
+        'method',
+        'url',
+        'params',
+        'tests',
+        'vars'
+      ],
+      Links: {
+        delete: `#/delete/requests/${id}/{id}`,
+        put: `#/put/requests/${id}/{id}`,
+        post: `#/post/requests/${id}`
       },
-      back: back,
-      data: Tests[id].requests.map((r, id) => ({
-        id: id,
-        index: id + 1,
+      data: Tests[id].requests.map(r => ({
         method: r.method,
         url: r.url,
         params: toStr(r.params),
         tests: (r.tests || []).length,
         vars: toStr(r.vars)
-      }))
+      })),
+      context: {
+        tests_id: id
+      }
     })
   }, {
     route: '/post/requests/:id',
     comp: form,
-    mount: ({id}) => ({
-      schema: genSchema('Insert Request: '+Tests[id].label, [
+    mount: ({id}) => postForm({
+      name: 'Request: '+Tests[id].label,
+      Fields: [
         'method',
         'url',
         'params',
         'vars'
-      ]),
-      back: back,
+      ],
+      getInfo: M => `${M.method} ${M.url}?${query(fromStr(M.params))}`,
       submit: M => {
-        const P = fromStr(M.params)
         Tests[id].requests.push({
           method: M.method,
           url: M.url,
@@ -378,14 +419,9 @@ const Routes = [
           vars: fromStr(M.vars),
           tests: []
         })
-        update()
-        return {
-          schema: {
-            title: 'Insert Request: '+Tests[id].label,
-            description: `New request insert: ${M.method} ${M.url}?${query(P)}`
-          },
-          back: back
-        }
+      },
+      context: {
+        tests_id: id
       }
     })
   }, {
@@ -395,6 +431,36 @@ const Routes = [
       id,
       rid
     }) => {
+      const T = Tests[id]
+      const R = T.requests[r]
+      const info = M => `${M.method} ${M.url}?${query(fromStr(M.params))}`
+      return putForm({
+        name: ((t, r) => `Request: ${T.label}`)(
+          ,
+          Tests[id].requests[r]
+        ),
+        Fields: [
+          'method',
+          'url',
+          'params',
+          'vars'
+        ],
+        Row,
+        getInfo: M => `${M.method} ${M.url}?${query(fromStr(M.params))}`,
+        submit: M => {
+          Tests[id].requests.push({
+            method: M.method,
+            url: M.url,
+            params: P,
+            vars: fromStr(M.vars),
+            tests: []
+          })
+        },
+        context: {
+          tests_id: id
+        }
+      })
+    }{
       const title = `Update Request: ${Tests[id].label}: ${rid + 1}`
       return {
         schema: addProp('default', genSchema(title, [
@@ -429,9 +495,13 @@ const Routes = [
     mount: ({
       id,
       rid
-    }) => {
-
-    }
+    }) => deleteForm({
+      name,
+      ids,
+      max,
+      getInfo,
+      submit
+    })
   }
 ]
 
