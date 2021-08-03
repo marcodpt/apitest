@@ -6,7 +6,7 @@ export default [
     route: '#/files',
     name: 'Files',
     item: 'File',
-    source: () => Data => Data,
+    source: Data => Data,
     label: Row => Row.name,
     Fields: [
       {
@@ -34,7 +34,7 @@ export default [
     route: '#/files/:file_id/tests',
     name: 'Tests',
     item: 'Test',
-    source: ({file_id}) => Data => Data[file_id].tests,
+    source: (Data, {file_id}) => Data[file_id].tests,
     label: Row => Row.label,
     Fields: [
       {
@@ -68,10 +68,10 @@ export default [
     route: '#/files/:file_id/tests/:test_id/requests',
     name: 'Requests',
     item: 'Request',
-    source: ({
+    source: (Data, {
       file_id,
       test_id
-    }) => Data => Data[file_id].tests[test_id].requests,
+    }) => Data[file_id].tests[test_id].requests,
     label: Row => Row.method+' '+Row.url+'?'+query(Row.query),
     Fields: [
       {
@@ -131,11 +131,11 @@ export default [
     route: '#/files/:file_id/tests/:test_id/requests/:req_id/assertions',
     name: 'Assertions',
     item: 'Assertion',
-    source: ({
+    source: (Data, {
       file_id,
       test_id,
       req_id
-    }) => Data => Data[file_id].tests[test_id].requests[req_id].assertions,
+    }) => Data[file_id].tests[test_id].requests[req_id].assertions,
     label: Row => Row.expression+' '+Row.operator+' '+Row.value,
     Fields: [
       {
