@@ -3,515 +3,238 @@ import axios from
 import spa from 'https://cdn.jsdelivr.net/gh/marcodpt/spa@0.0.1/index.js'
 import {form} from 'https://cdn.jsdelivr.net/gh/marcodpt/form@0.0.5/index.js'
 import {table} from 'https://cdn.jsdelivr.net/gh/marcodpt/table@0.0.9/index.js'
-import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
+import routes from './routes.js'
+import services from './services.js'
 
-const D = ({tests_id}) => ({
-  index: {
-    type: 'integer',
-    title: 'Id'
-  },
-  label: {
-    type: 'string',
-    title: 'Label',
-    minLength: 1,
-    maxLength: 255,
-    default: ''
-  },
-  requests: {
-    type: 'integer',
-    title: 'Requests',
-    href: '#/get/requests/{id}'
-  },
-  method: {
-    title: 'Method',
-    type: 'string',
-    enum: [
-      'GET',
-      'POST',
-      'DELETE',
-      'PUT',
-      'PATCH',
-      'HEAD',
-      'OPTIONS'
-    ],
-    default: 'GET'
-  },
-  url: {
-    title: 'URL',
-    type: 'string',
-    default: '',
-    minLength: 1
-  },
-  params: {
-    title: 'Params',
-    type: 'string',
-    default: '',
-    format: 'text'
-  },
-  tests: {
-    title: 'Tests',
-    type: 'integer',
-    href: `#/get/tests/${tests_id}/{id}`
-  },
-  vars: {
-    title: 'Vars',
-    type: 'string',
-    default: '',
-    format: 'text'
+var X = null
+
+const reload = () => {
+  if (X != null) {
+    localStorage.clear()
+    localStorage.setItem('DATA', JSON.stringify(X))
   }
-})
-
-const GlobalActions = {
-  post: {
-    type: 'success',
-    icon: 'pencil-alt',
-    title: 'Insert'
+  try {
+    X = JSON.parse(localStorage.getItem('DATA')) || []
+  } catch (err) {
+    X = []
   }
 }
 
-const RowActions = {
-  delete: {
-    type: 'danger',
-    icon: 'trash',
-    title: 'Delete',
-    batch: href => href.replace('{id}', '{_ids}')
-  },
-  put: {
-    type: 'warning',
-    icon: 'edit',
-    title: 'Edit'
-  }
-}
-
-var Tests = []
-try {
-  Tests = JSON.parse(window.localStorage.getItem('API_REST_TESTS')) || []
-} catch (err) {}
-const update = () => window.localStorage.setItem(
-  'API_REST_TESTS', JSON.stringify(Tests)
-)
-console.log(Tests)
 const back = () => {history.back()}
-const fromStr = str => query(str.split('\n').join('&'))
-const toStr = X => query(X).split('&').join('\n')
 
-const genSchema = (title, required, context) => ({
-  type: 'object',
-  title: title,
-  properties: required.reduce((P, key) => {
-    P[key] = {...D(context || {})[key]}
-    return P
-  }, {}),
-  required: required
-})
+const K = [
+  'key',
+  'formatter',
+  'parser',
+  'get',
+].concat(Object.keys(services))
 
-const addProp = (prop, Schema, X) => Object.keys(X).reduce((S, key) => {
-  const P = S.properties
-  if (P[key] != null) {
-    P[key] = {...P[key]}
-    P[key][prop] = X[key]
+const getProp = (Fields, params, Base) => Fields.reduce((P, F) => {
+  if (Base != null || F.get == null) {
+    P[F.key] = K.reduce((R, key) => {
+      delete R[key]
+      return R
+    }, {...F})
+    if (typeof P[F.key].href == 'function') {
+      P[F.key].href = P[F.key].href(params)
+    }
   }
-  return S
-}, {...Schema})
 
-const getTable = ({
-  name,
-  Fields,
-  Links,
-  data,
-  context
-}) => ({
-  sort: true,
-  search: true,
-  filter: true,
-  group: true,
-  check: true,
-  limit: 10,
-  back: back,
-  schema: {
-    type: 'array',
-    title: name,
-    items: {
-      ...genSchema('', ['index'].concat(Fields), context),
-      links: Object.keys(Links)
-        .filter(key => RowActions[key] != null)
-        .map(key => ({
-          ...RowActions[key],
-          href: Links[key]
-        }))
-        .map(X => !X.batch ? X : {
-          ...X,
-          batch: X.batch(X.href)
-        })
-    },
-    links: Object.keys(Links)
-      .filter(key => GlobalActions[key] != null)
-      .map(key => ({
-        ...GlobalActions[key],
-        href: Links[key]
-      }))
-  },
-  data: data.map((row, i) => ({
-    id: i,
-    index: i+1,
-    ...row
+  return P
+}, Base || {})
+
+const resolve = (route, params) => route.split('/').map(
+  key => key.substr(0, 1) == ':' ? params[key.substr(1)] : key
+).join('/')
+
+const getLinks = (Services, global, href) => Object.keys(services)
+  .filter(key => (
+    (global && services[key].batch == null) ||
+    (!global && services[key].batch != null)
+  ) && Services.indexOf(key) != -1)
+  .map(key => ({
+    ...services[key],
+    href: href+(global ? '/' : '/{id}/')+key,
+    batch: !global && services[key].batch ? href+`/{_ids}/${key}` : false
   }))
-})
 
-const postForm = ({
-  name,
-  Fields,
-  getInfo,
-  submit,
-  context
-}) => ({
-  schema: genSchema(`Insert ${name}`, Fields, context),
-  back: back,
-  submit: M => {
-    submit(M)
-    update()
-    return {
-      schema: {
-        type: 'object',
-        title: `Insert ${name}`,
-        description: `${name}: ${getInfo(M)} added!`
-      },
-      back: back,
-      alert: 'success'
-    }
-  }
-})
-
-const putForm = ({
-  name,
-  Fields,
-  Row,
-  getInfo,
-  submit,
-  context
-}) => ({
-  schema: addProp('default',
-    genSchema(`Edit ${name}`, ['label'], context)
-  , Row),
-  back: back,
-  submit: M => {
-    submit(M)
-    update()
-    return {
-      schema: {
-        title: `Edit ${name}`,
-        description: `Test: ${getInfo(Row)} updated!`
-      },
-      back: back,
-      alert: 'success'
-    }
-  }
-})
-
-const deleteForm = ({
-  name,
-  ids,
-  max,
-  getInfo,
-  submit
-}) => {
-  const title = 'Delete '+name
-  const Ids = ids.split(',')
-    .map(id => parseInt(id))
-    .filter(id => typeof id == 'number' && id >= 0 && id < max)
-  Ids.sort((a, b) => a - b)
-  const info = '\n - '+Ids.map(getInfo).join('\n - ')+'\n'
-
-  if (!Ids.length) {
-    return {
-      schema: {
-        title: title,
-        description: 'Nothing selected!'
-      },
-      alert: 'danger',
-      back: back
-    }
+const getContext = (context, Data, params) => {
+  if (typeof context != 'function') {
+    return ''
   } else {
-    return {
-      schema: {
-        title: title,
-        description: `Are you sure do you want to exclude: ${info}?`+
-          ` This action cannot be undone!`
-      },
-      alert: 'info',
-      back: back,
-      submit: () => {
-        submit(Ids)
-        update()
-        return {
-          schema: {
-            title: title,
-            description: `${name}: ${info} Removed!`
-          },
-          back: back,
-          alert: 'success'
-        }
-      }
-    }
+    const s = context(Data, params).map(C => {
+      const R = routes[C[0]]
+      return '['+R.item+': '+R.label(C[1])+']'
+    }).join(' ')
+    return s+(s.length ? ' ' : '')
   }
 }
 
-const submitDelete = X => Ids => {
-  Ids.reverse()
-  Ids.forEach(id => {
-    X.splice(id, 1)
-  })
-}
-
-const Tests = () => ({
-  singular: 'Test',
-  plural: 'Tests',
-  Fields: {
-    label: {
-      type: 'string',
-      title: 'Label',
-      minLength: 1,
-      maxLength: 255,
-      default: ''
-    },
-    requests: {
-      type: 'integer',
-      title: 'Requests',
-      href: '#/get/requests/{id}'
-    }
-  },
-  Links: {
-    delete: '#/delete/tests/{id}',
-    put: '#/put/tests/{id}',
-    post: '#/post/tests'
-  },
-  data: Tests.map(row => ({
-    label: row.label,
-    requests: row.requests.length
-  })),
-  getInfo: Row => Row.label,
-  post: M => Tests.push({
-    label: M.label,
-    requests: [],
-    env: {}
-  }),
-  put: (M, id) => {
-    Tests[id] = {
-      ...Tests[id],
-      ...M
-    }
-  },
-  delete: submitDelete(Tests)
-})
-
-const Requests = ({
-  tests_id
-}) => ({
-  singular: 'Request',
-  plural: 'Requests'
-})
-
-const Routes = [
-  {
-    route: '/',
-    comp: table,
-    mount: () => getTable({
-      name: 'Tests',
-      Fields: ['label', 'requests'],
-      Links: {
-        delete: '#/delete/tests/{id}',
-        put: '#/put/tests/{id}',
-        post: '#/post/tests'
-      },
-      data: Tests.map(row => ({
-        label: row.label,
-        requests: row.requests.length
-      }))
-    })
-  }, {
-    route: '/post/tests',
-    comp: form,
-    mount: () => postForm({
-      name: 'Test',
-      Fields: ['label'],
-      getInfo: M => M.label,
-      submit: M => Tests.push({
-        label: M.label,
-        requests: [],
-        env: {}
-      })
-    })
-  }, {
-    route: '/put/tests/:id',
-    comp: form,
-    mount: ({id}) => putForm({
-      name: 'Test',
-      Fields: ['label'],
-      Row: Tests[id],
-      getInfo: M => M.label,
-      submit: M => {
-        Tests[id] = {
-          ...Tests[id],
-          ...M
-        }
-      }
-    })
-  }, {
-    route: '/delete/tests/:ids',
-    comp: form,
-    mount: ({ids}) => deleteForm({
-      name: 'Test',
-      ids,
-      max: Tests.length,
-      getInfo: id => Tests[id].label,
-      submit: Ids => {
-        Ids.reverse()
-        Ids.forEach(id => {
-          Tests.splice(id, 1)
-        })
-      } 
-    })
-  }, {
-    route: '/get/requests/:id',
-    comp: table,
-    mount: ({id}) => getTable({
-      name: 'Requests: '+Tests[id].label,
-      Fields: [
-        'method',
-        'url',
-        'params',
-        'tests',
-        'vars'
-      ],
-      Links: {
-        delete: `#/delete/requests/${id}/{id}`,
-        put: `#/put/requests/${id}/{id}`,
-        post: `#/post/requests/${id}`
-      },
-      data: Tests[id].requests.map(r => ({
-        method: r.method,
-        url: r.url,
-        params: toStr(r.params),
-        tests: (r.tests || []).length,
-        vars: toStr(r.vars)
-      })),
-      context: {
-        tests_id: id
-      }
-    })
-  }, {
-    route: '/post/requests/:id',
-    comp: form,
-    mount: ({id}) => postForm({
-      name: 'Request: '+Tests[id].label,
-      Fields: [
-        'method',
-        'url',
-        'params',
-        'vars'
-      ],
-      getInfo: M => `${M.method} ${M.url}?${query(fromStr(M.params))}`,
-      submit: M => {
-        Tests[id].requests.push({
-          method: M.method,
-          url: M.url,
-          params: P,
-          vars: fromStr(M.vars),
-          tests: []
-        })
-      },
-      context: {
-        tests_id: id
-      }
-    })
-  }, {
-    route: '/put/requests/:id/:rid',
-    comp: form,
-    mount: ({
-      id,
-      rid
-    }) => {
-      const T = Tests[id]
-      const R = T.requests[r]
-      const info = M => `${M.method} ${M.url}?${query(fromStr(M.params))}`
-      return putForm({
-        name: ((t, r) => `Request: ${T.label}`)(
-          ,
-          Tests[id].requests[r]
-        ),
-        Fields: [
-          'method',
-          'url',
-          'params',
-          'vars'
-        ],
-        Row,
-        getInfo: M => `${M.method} ${M.url}?${query(fromStr(M.params))}`,
-        submit: M => {
-          Tests[id].requests.push({
-            method: M.method,
-            url: M.url,
-            params: P,
-            vars: fromStr(M.vars),
-            tests: []
-          })
-        },
-        context: {
-          tests_id: id
-        }
-      })
-    }{
-      const title = `Update Request: ${Tests[id].label}: ${rid + 1}`
-      return {
-        schema: addProp('default', genSchema(title, [
-          'method',
-          'url',
-          'params',
-          'vars'
-        ]), Tests[id].requests[rid]),
-        back: back,
-        submit: M => {
-          const P = fromStr(M.params)
-          Tests[id].requests.push({
-            method: M.method,
-            url: M.url,
-            params: P,
-            vars: fromStr(M.vars)
-          })
-          update()
-          return {
-            schema: {
-              title: title,
-              description: `New request insert: ${M.method} ${M.url}?${query(P)}`
-            },
-            back: back
-          }
-        }
-      }
-    }
-  }, {
-    route: '/delele/requests/:id/:rid',
-    comp: form,
-    mount: ({
-      id,
-      rid
-    }) => deleteForm({
-      name,
-      ids,
-      max,
-      getInfo,
-      submit
-    })
-  }
-]
+reload()
+console.log(X)
 
 window.addEventListener('load', () => {
   const router = spa(document.body, {
-    routes: Routes,
+    routes: routes.reduce((Routes, {
+      route,
+      context,
+      name,
+      item,
+      source,
+      label,
+      Fields,
+      Services
+    }) => {
+      Routes.push({
+        route: route,
+        comp: table,
+        mount: params => {
+          const href = resolve(route, params)
+          const P = getProp(Fields, params, {
+            index: {
+              type: 'integer',
+              title: 'Id'
+            }
+          })
+
+          return {
+            sort: true,
+            search: true,
+            filter: true,
+            group: true,
+            check: true,
+            limit: 10,
+            back: back,
+            schema: {
+              type: 'array',
+              title: getContext(context, X, params)+name,
+              items: {
+                type: 'object',
+                properties: P,
+                required: Object.keys(P),
+                links: getLinks(Services, false, href)
+              },
+              links: getLinks(Services, true, href)
+            },
+            data: source(X, params).map((row, i) => Fields.reduce((R, F) => {
+              const k = F.key
+              const v = row[k]
+
+              if (F.get) {
+                R[k] = F.get(v)
+              } else if (F.formatter) {
+                R[k] = F.formatter(v)
+              } else {
+                R[k] = v
+              }
+
+              return R
+            }, {
+              id: i,
+              index: i + 1
+            }))
+          }
+        }
+      })
+
+      return Routes.concat(Services
+        .filter(key => services[key] != null)
+        .map(service => {
+          const S = services[service]
+
+          return {
+            route: route+(S.batch == null ? '/' : '/:id/')+service,
+            comp: form,
+            mount: params => {
+              const P = getProp(Fields, params)
+              const Ids = []
+              var info = ''
+              const pre = getContext(context, X, params)
+              const title = `${pre}${S.title} ${item}`
+              const V = source(X, params)
+              var id = null
+              
+              if (params.id != null) {
+                const max = V.length
+                params.id.split(',')
+                  .map(id => parseInt(id))
+                  .filter(id => typeof id == 'number' && id >= 0 && id < max)
+                  .forEach(id => {
+                    Ids.push(id)
+                  })
+                Ids.sort((a, b) => a - b)
+                info = '\n - '+Ids.map(id => label(V[id])).join('\n - ')+'\n'
+                Ids.reverse()
+                id = Ids.length == 1 ? Ids[0] : id
+              } else {
+                Ids.push(null)
+              }
+
+              if (!Ids.length) {
+                return {
+                  schema: {
+                    type: 'object',
+                    title: title,
+                    description: 'Nothing selected!'
+                  },
+                  alert: 'danger',
+                  back: back
+                }
+              } else {
+                const Q = Object.keys(P)
+                return {
+                  schema: {
+                    type: 'object',
+                    title: title,
+                    description: S.description ? S.description(info) : '',
+                    properties: S.description ? {} : 
+                      id == null ? P : Q.reduce((P, key) => {
+                        const F = Fields.filter(F => F.key == key)[0]
+                        const v = V[id][key]
+                        P[key].default = F && F.formatter ? F.formatter(v) : v
+                        return P
+                      }, P),
+                    required: S.description ? [] : Q
+                  },
+                  alert: 'info',
+                  back: back,
+                  submit: (M, ids) => {
+                    Ids.forEach(id => {
+                      S.submit(V, Fields.reduce((M, F) => {
+                        if (F.get) {
+                          if (F[service] && M[F.key] == null) {
+                            M[F.key] = F[service]
+                          }
+                        } else if (F.parser) {
+                          M[F.key] = F.parser(M[F.key])
+                        }
+                        return M
+                      }, {...M}), id)
+                    })
+                    reload()
+                    info = info || label(M)
+
+                    return {
+                      schema: {
+                        type: 'object',
+                        title: title,
+                        description: `${item}: ${info} ${S.finish}!`
+                      },
+                      alert: 'success',
+                      back: back
+                    }
+                  }
+                }
+              }
+            }
+          }
+        })
+      )
+    }, []),
     view: document.body.innerHTML
   })
   const tick = () => {
-    router(location.hash.substr(1))
+    router(location.hash)
   }
   window.addEventListener('hashchange', tick)
   tick()

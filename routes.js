@@ -1,11 +1,13 @@
+import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
+
 const fromStr = str => query(str.split('\n').join('&'))
 const toStr = X => query(X).split('&').join('\n')
 
 export default [
   {
-    route: '#/files',
-    name: 'Files',
-    item: 'File',
+    route: '#/tests',
+    name: 'Tests',
+    item: 'Test',
     source: Data => Data,
     label: Row => Row.name,
     Fields: [
@@ -17,46 +19,18 @@ export default [
         minLength: 1,
         maxLength: 255
       }, {
-        key: 'tests',
-        type: 'integer',
-        title: 'Tests',
-        href: () => '#/files/{id}/tests',
-        get: Row => Row.tests.length,
-        post: Row => []
-      }
-    ],
-    Services: [
-      'post',
-      'delete',
-      'put'
-    ]
-  }, {
-    route: '#/files/:file_id/tests',
-    name: 'Tests',
-    item: 'Test',
-    source: (Data, {file_id}) => Data[file_id].tests,
-    label: Row => Row.label,
-    Fields: [
-      {
-        key: 'label',
-        type: 'string',
-        title: 'Label',
-        minLength: 1,
-        maxLength: 255,
-        default: ''
-      }, {
         key: 'requests',
         type: 'integer',
         title: 'Requests',
-        href: ({file_id}) => `#/files/${file_id}/tests/{id}/requests`,
-        get: Row => Row.requests.length,
-        post: Row => []
+        href: () => '#/tests/{id}/requests',
+        get: X => X.length,
+        post: []
       }, {
         key: 'env',
         type: 'string',
         title: 'Env',
-        get: Row => Row.requests.length,
-        post: Row => ({})
+        get: X => JSON.stringify(X, undefined, 2),
+        post: {}
       }
     ],
     Services: [
@@ -65,14 +39,12 @@ export default [
       'put'
     ]
   }, {
-    route: '#/files/:file_id/tests/:test_id/requests',
+    route: '#/tests/:test_id/requests',
+    context: (Data, {test_id}) => [[0, Data[test_id]]],
     name: 'Requests',
     item: 'Request',
-    source: (Data, {
-      file_id,
-      test_id
-    }) => Data[file_id].tests[test_id].requests,
-    label: Row => Row.method+' '+Row.url+'?'+query(Row.query),
+    source: (Data, {test_id}) => Data[test_id].requests,
+    label: Row => Row.method+' '+Row.url+'?'+query(Row.params),
     Fields: [
       {
         key: 'method',
@@ -106,12 +78,9 @@ export default [
         key: 'assertions',
         title: 'Assertions',
         type: 'integer',
-        href: ({
-          file_id,
-          test_id
-        }) => `#/files/${file_id}/tests/${test_id}/requests/{id}/assertions`,
-        get: Row => Row.assertions.length,
-        post: Row => []
+        href: ({test_id}) => `#/tests/${test_id}/requests/{id}/assertions`,
+        get: X => X.length,
+        post: []
       }, {
         key: 'vars',
         title: 'Vars',
@@ -128,14 +97,20 @@ export default [
       'put'
     ]
   }, {
-    route: '#/files/:file_id/tests/:test_id/requests/:req_id/assertions',
+    route: '#/tests/:test_id/requests/:req_id/assertions',
+    context: (Data, {
+      test_id,
+      req_id
+    }) => [
+      [0, Data[test_id]],
+      [1, Data[test_id].requests[req_id]]
+    ],
     name: 'Assertions',
     item: 'Assertion',
     source: (Data, {
-      file_id,
       test_id,
       req_id
-    }) => Data[file_id].tests[test_id].requests[req_id].assertions,
+    }) => Data[test_id].requests[req_id].assertions,
     label: Row => Row.expression+' '+Row.operator+' '+Row.value,
     Fields: [
       {
@@ -154,7 +129,14 @@ export default [
         title: 'Value',
         type: 'string',
         default: '',
-        parser: X => JSON.parse(X),
+        format: 'text',
+        parser: X => {
+          try {
+            return JSON.parse(X)
+          } catch (err) {
+            return X
+          }
+        },
         formatter: X => JSON.stringify(X, undefined, 2)
       }
     ],

@@ -4,17 +4,9 @@ export default {
     icon: 'pencil-alt',
     title: 'Insert',
     finish: 'added',
-    submit: (V, M) => {
-      V.push(Fields.reduce((R, F) => {
-        if (F.get) {
-          if (F.post) {
-            R[F.key] = F.post(M)
-          }
-        } else if (F.parser) {
-          R[F.key] = F.parser(M[F.key])
-        }
-        return R
-      }, {...M}))
+    submit: (V, M, id) => {
+      console.log(M)
+      V.push(M)
     }
   },
   put: {
@@ -24,19 +16,10 @@ export default {
     finish: 'updated',
     batch: false,
     submit: (V, M, id) => {
-      V[id] = Fields.reduce((R, F) => {
-        if (F.get) {
-          if (F.put && R[F.key] == null) {
-            R[F.key] = F.put(M)
-          }
-        } else if (F.parser) {
-          R[F.key] = F.parser(M[F.key])
-        }
-        return R
-      }, {
+      V[id] = {
         ...V[id],
         ...M
-      })
+      }
     }
   },
   delete: {
@@ -48,7 +31,7 @@ export default {
       ` This action cannot be undone!`,
     finish: 'removed',
     batch: true,
-    submit: (V, id) => {
+    submit: (V, M, id) => {
       V.splice(id, 1)
     }
   }
