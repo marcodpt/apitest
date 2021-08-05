@@ -1,5 +1,3 @@
-import axios from
-  'https://cdn.jsdelivr.net/npm/redaxios@0.4.1/dist/redaxios.module.js'
 import spa from 'https://cdn.jsdelivr.net/gh/marcodpt/spa@0.0.1/index.js'
 import {form} from 'https://cdn.jsdelivr.net/gh/marcodpt/form@0.0.5/index.js'
 import {table} from 'https://cdn.jsdelivr.net/gh/marcodpt/table@0.0.9/index.js'
@@ -141,7 +139,6 @@ window.addEventListener('load', () => {
         .filter(key => services[key] != null)
         .map(service => {
           const S = services[service]
-
           return {
             route: route+(S.batch == null ? '/' : '/:id/')+service,
             comp: form,
@@ -164,7 +161,9 @@ window.addEventListener('load', () => {
                   })
                 Ids.sort((a, b) => a - b)
                 info = '\n - '+Ids.map(id => label(V[id])).join('\n - ')+'\n'
-                Ids.reverse()
+                if (S.reverse) {
+                  Ids.reverse()
+                }
                 id = Ids.length == 1 ? Ids[0] : id
               } else {
                 Ids.push(null)
@@ -182,7 +181,7 @@ window.addEventListener('load', () => {
                 }
               } else {
                 const Q = Object.keys(P)
-                return {
+                const R = {
                   schema: {
                     type: 'object',
                     title: title,
@@ -198,33 +197,41 @@ window.addEventListener('load', () => {
                   },
                   alert: 'info',
                   back: back,
-                  submit: (M, ids) => {
-                    Ids.forEach(id => {
-                      S.submit(V, Fields.reduce((M, F) => {
-                        if (F.get) {
-                          if (F[service] && M[F.key] == null) {
-                            M[F.key] = F[service]
-                          }
-                        } else if (F.parser) {
-                          M[F.key] = F.parser(M[F.key])
+                  submit: M => {
+                    const Data = Fields.reduce((M, F) => {
+                      if (F.get) {
+                        if (F[service] && M[F.key] == null) {
+                          M[F.key] = F[service]
                         }
-                        return M
-                      }, {...M}), id)
-                    })
-                    reload()
-                    info = info || label(M)
+                      } else if (F.parser && M[F.key] != null) {
+                        M[F.key] = F.parser(M[F.key])
+                      }
+                      return M
+                    }, {...M})
+                    return Ids.reduce((p, id) => p.then(res => {
+                      if (res != null) {
+                        return res
+                      } else {
+                        return S.submit(V, Data, id, R)
+                      }
+                    }), Promise.resolve()).then(W => {
+                      reload()
+                      info = info || label(Data)
 
-                    return {
-                      schema: {
-                        type: 'object',
-                        title: title,
-                        description: `${item}: ${info} ${S.finish}!`
-                      },
-                      alert: 'success',
-                      back: back
-                    }
+                      return W || {
+                        schema: {
+                          type: 'object',
+                          title: title,
+                          description: `${item}: ${info} ${S.finish}!`
+                        },
+                        alert: 'success',
+                        back: back
+                      }
+                    })
                   }
                 }
+                return !R.schema.description && !R.schema.required.length ?
+                  R.submit({}) : R
               }
             }
           }

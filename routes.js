@@ -94,7 +94,8 @@ export default [
     Services: [
       'post',
       'delete',
-      'put'
+      'put',
+      'run'
     ]
   }, {
     route: '#/tests/:test_id/requests/:req_id/assertions',
