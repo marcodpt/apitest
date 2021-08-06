@@ -69,7 +69,6 @@ const getContext = (context, Data, params) => {
 }
 
 reload()
-console.log(X)
 
 window.addEventListener('load', () => {
   const router = spa(document.body, {
@@ -181,6 +180,45 @@ window.addEventListener('load', () => {
                 }
               } else {
                 const Q = Object.keys(P)
+                var j = -1
+                const U = source(X, params)
+                const run = submitter => M => {
+                  const Data = Fields.reduce((M, F) => {
+                    if (F.get) {
+                      if (F[service] && M[F.key] == null) {
+                        M[F.key] = F[service]
+                      }
+                    } else if (F.parser && M[F.key] != null) {
+                      M[F.key] = F.parser(M[F.key])
+                    }
+                    return M
+                  }, {...M})
+                  return Ids.reduce((p, id, i) => p.then(res => {
+                    if (res != null || i <= j) {
+                      return res
+                    } else {
+                      j = i
+                      return submitter(U, Data, id, R)
+                    }
+                  }), Promise.resolve()).then(W => {
+                    reload()
+                    info = info || label(Data)
+
+                    if (W && W.submit) {
+                      W.submit = run(W.submit)
+                    }
+
+                    return W || {
+                      schema: {
+                        type: 'object',
+                        title: title,
+                        description: `${item}: ${info} ${S.finish}!`
+                      },
+                      alert: 'success',
+                      back: back
+                    }
+                  })
+                }
                 const R = {
                   schema: {
                     type: 'object',
@@ -197,38 +235,7 @@ window.addEventListener('load', () => {
                   },
                   alert: 'info',
                   back: back,
-                  submit: M => {
-                    const Data = Fields.reduce((M, F) => {
-                      if (F.get) {
-                        if (F[service] && M[F.key] == null) {
-                          M[F.key] = F[service]
-                        }
-                      } else if (F.parser && M[F.key] != null) {
-                        M[F.key] = F.parser(M[F.key])
-                      }
-                      return M
-                    }, {...M})
-                    return Ids.reduce((p, id) => p.then(res => {
-                      if (res != null) {
-                        return res
-                      } else {
-                        return S.submit(V, Data, id, R)
-                      }
-                    }), Promise.resolve()).then(W => {
-                      reload()
-                      info = info || label(Data)
-
-                      return W || {
-                        schema: {
-                          type: 'object',
-                          title: title,
-                          description: `${item}: ${info} ${S.finish}!`
-                        },
-                        alert: 'success',
-                        back: back
-                      }
-                    })
-                  }
+                  submit: run(S.submit)
                 }
                 return !R.schema.description && !R.schema.required.length ?
                   R.submit({}) : R

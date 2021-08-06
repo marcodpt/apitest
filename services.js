@@ -77,6 +77,72 @@ const Op = {
   gt: (a, b) => parseFloat(a) > parseFloat(b)
 }
 
+const run = (V, M, id, F) => {
+  var p = null
+  const method = V[id].method.toLowerCase()
+  const params = V[id].params
+  const url = V[id].url
+  const A = V[id].assertions
+  const q = query(params)
+  const label = `${id+1}: ${V[id].method} ${url+(q ? '?' : '')+q}`
+  if ([
+    'post',
+    'put',
+    'patch'
+  ].indexOf(method) != -1) {
+    p = axios[method](url, params)
+  } else {
+    p = axios[method](url+(q ? '?' : '')+q)
+  }
+
+  const check = res => {
+    var R = null
+    A.forEach(a => {
+      if (R == null) {
+        const v = jpath(res, a.expression.split('.'))
+        if (Op[a.operator] == null) {
+          R = {
+            schema: {
+              title: F.schema.title,
+              description: 'Unknown operator: <'+a.operator+'>'
+            },
+            alert: 'danger',
+            back: F.back
+          }
+        } else if (!Op[a.operator](v, a.value)) {
+          R = {
+            schema: {
+              title: F.schema.title,
+              description: [
+                label,
+                `Error: ${a.expression} ${a.operator}`,
+                `***** Expected *****`,
+                out(a.value),
+                `***** Result   *****`,
+                out(v)
+              ].concat(a.operator != 'eq' ? [] : [
+                `********************`,
+                `Do you want to update?`
+              ]).join('\n').trim()
+            },
+            back: F.back,
+            alert: 'danger',
+            submit: a.operator != 'eq' ? null : (V, M, id, F) => {
+              a.value = v
+              return run(V, M, id, F)
+            }
+          }
+        }
+      }
+    })
+    return R
+  }
+
+  return p
+    .then(res => check(res))
+    .catch(err => check(err))
+}
+
 export default {
   post: {
     type: 'success',
@@ -84,7 +150,6 @@ export default {
     title: 'Insert',
     finish: 'added',
     submit: (V, M, id) => {
-      console.log(M)
       V.push(M)
     }
   },
@@ -122,73 +187,6 @@ export default {
     description: info => '',
     finish: 'passed',
     batch: true,
-    submit: (V, M, id, F) => {
-      var p = null
-      const method = V[id].method.toLowerCase()
-      const params = V[id].params
-      const url = V[id].url
-      const A = V[id].assertions
-      if ([
-        'post',
-        'put',
-        'patch'
-      ].indexOf(method) != -1) {
-        p = axios[method](url, params)
-      } else {
-        const q = query(params)
-        p = axios[method](url+(q ? '?' : '')+q)
-      }
-
-      const check = res => {
-        var R = null
-        A.forEach(a => {
-          const v = jpath(res, a.expression.split('.'))
-          if (Op[a.operator] == null) {
-            R = {
-              schema: {
-                title: F.schema.title,
-                description: 'Unknown operator: <'+a.operator+'>'
-              },
-              alert: 'danger',
-              back: F.back
-            }
-          } else if (!Op[a.operator](v, a.value)) {
-            R = {
-              schema: {
-                title: F.schema.title,
-                description: [
-                  `Error: ${a.expression} ${a.operator}`,
-                  `***** Expected *****`,
-                  out(a.value),
-                  `***** Result   *****`,
-                  out(p)
-                ].concat(a.operator != 'eq' ? [] : [
-                  `********************`,
-                  `Do you want to update?`
-                ]).join('\n').trim()
-              },
-              back: F.back,
-              alert: 'danger',
-              submit: a.operator != 'eq' ? null : () => {
-                a.value = v
-                return check(res)
-              }
-            }
-          }
-        })
-        return R || {
-          schema: {
-            title: F.schema.title,
-            description: 'All assertions passed!'
-          },
-          alert: 'success',
-          back: F.back
-        }
-      }
-
-      return p
-        .then(res => check(res))
-        .catch(err => check(err))
-    }
+    submit: run
   }
 }
