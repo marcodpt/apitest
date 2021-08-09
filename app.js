@@ -6,14 +6,6 @@ import services from './services.js'
 
 var X = null
 
-const reload = (prevent) => {
-  if (X != null) {
-  }
-  if (prevent) {
-    return
-  }
-}
-
 const back = () => {history.back()}
 
 const K = [
@@ -142,11 +134,12 @@ window.addEventListener('load', () => {
             route: route+(S.batch == null ? '/' : '/:id/')+service,
             comp: form,
             mount: params => {
-              const P = getProp(Fields, params)
+              const G = S.Fields || Fields
+              const P = getProp(G, params)
               const Ids = []
               var info = ''
               const pre = getContext(context, X, params)
-              const title = `${pre}${S.title} ${item}`
+              const title = `${pre}${S.title} ${S.multiple ? name : item}`
               var V = source(X, params)
               var id = null
               
@@ -181,7 +174,7 @@ window.addEventListener('load', () => {
               } else {
                 const Q = Object.keys(P)
                 const run = submitter => M => {
-                  const Data = Fields.reduce((M, F) => {
+                  const Data = G.reduce((M, F) => {
                     if (F.get) {
                       if (F[service] && M[F.key] == null) {
                         M[F.key] = F[service]
@@ -200,7 +193,9 @@ window.addEventListener('load', () => {
                   }), Promise.resolve()).then(W => {
                     localStorage.clear()
                     localStorage.setItem('DATA', JSON.stringify(X))
-                    info = info || label(Data)
+                    if (!S.multiple) {
+                      info = info || label(Data)
+                    }
 
                     if (W && W.submit) {
                       W.submit = run(W.submit)
@@ -210,7 +205,8 @@ window.addEventListener('load', () => {
                       schema: {
                         type: 'object',
                         title: title,
-                        description: `${item}: ${info} ${S.finish}!`
+                        description: S.multiple ? `${name}: ${S.finish}` :
+                          `${item}: ${info} ${S.finish}!`
                       },
                       alert: 'success',
                       back: back
@@ -222,9 +218,11 @@ window.addEventListener('load', () => {
                     type: 'object',
                     title: title,
                     description: S.description ? S.description(info) : '',
-                    properties: S.description ? {} : 
+                    properties: S.description && !S.Fields ? {} : 
                       id == null ? P : Q.reduce((P, key) => {
-                        const F = Fields.filter(F => F.key == key)[0]
+                        const F = G.filter(
+                          F => F.key == key
+                        )[0]
                         const v = V[id][key]
                         P[key].default = F && F.formatter ? F.formatter(v) : v
                         return P

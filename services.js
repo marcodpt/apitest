@@ -194,5 +194,59 @@ export default {
     finish: 'passed',
     batch: true,
     submit: run
+  },
+  save: {
+    type: 'primary',
+    icon: 'save',
+    title: 'Save',
+    description: info => '',
+    finish: '',
+    submit: () => {
+      var link = document.createElement('a')
+      link.setAttribute('href',
+        'data:text/plain;charset=utf-8,'+
+        encodeURIComponent(localStorage.getItem('DATA'))
+      )
+      link.setAttribute('download', 'tests.json')
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      history.back()
+    }
+  },
+  import: {
+    type: 'light',
+    icon: 'file',
+    title: 'Import',
+    Fields: [
+      {
+        key: 'file',
+        type: 'array',
+        format: 'file'
+      }
+    ],
+    submit: (V, M) => {
+      try {
+        M.file[0]
+      } catch (err) {
+
+      }
+      console.log(V)
+      console.log(M)
+    }
+  },
+  clear: {
+    type: 'danger',
+    icon: 'trash',
+    title: 'Remove All',
+    description: info => [
+      'Are you sure do you want to remove all tests?',
+      'This action cannot be undone!'
+    ].join('\n'),
+    finish: 'removed',
+    multiple: true,
+    submit: (V, M) => {
+      V.length = 0
+    }
   }
 }

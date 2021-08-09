@@ -35,6 +35,9 @@ export default [
     ],
     Services: [
       'post',
+      'save',
+      'import',
+      'clear',
       'delete',
       'put'
     ]
