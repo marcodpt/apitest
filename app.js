@@ -6,15 +6,11 @@ import services from './services.js'
 
 var X = null
 
-const reload = () => {
+const reload = (prevent) => {
   if (X != null) {
-    localStorage.clear()
-    localStorage.setItem('DATA', JSON.stringify(X))
   }
-  try {
-    X = JSON.parse(localStorage.getItem('DATA')) || []
-  } catch (err) {
-    X = []
+  if (prevent) {
+    return
   }
 }
 
@@ -68,7 +64,11 @@ const getContext = (context, Data, params) => {
   }
 }
 
-reload()
+try {
+  X = JSON.parse(localStorage.getItem('DATA')) || []
+} catch (err) {
+  X = []
+}
 
 window.addEventListener('load', () => {
   const router = spa(document.body, {
@@ -147,7 +147,7 @@ window.addEventListener('load', () => {
               var info = ''
               const pre = getContext(context, X, params)
               const title = `${pre}${S.title} ${item}`
-              const V = source(X, params)
+              var V = source(X, params)
               var id = null
               
               if (params.id != null) {
@@ -180,8 +180,6 @@ window.addEventListener('load', () => {
                 }
               } else {
                 const Q = Object.keys(P)
-                var j = -1
-                const U = source(X, params)
                 const run = submitter => M => {
                   const Data = Fields.reduce((M, F) => {
                     if (F.get) {
@@ -194,14 +192,14 @@ window.addEventListener('load', () => {
                     return M
                   }, {...M})
                   return Ids.reduce((p, id, i) => p.then(res => {
-                    if (res != null || i <= j) {
+                    if (res != null) {
                       return res
                     } else {
-                      j = i
-                      return submitter(U, Data, id, R)
+                      return submitter(V, Data, id, R)
                     }
                   }), Promise.resolve()).then(W => {
-                    reload()
+                    localStorage.clear()
+                    localStorage.setItem('DATA', JSON.stringify(X))
                     info = info || label(Data)
 
                     if (W && W.submit) {

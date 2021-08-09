@@ -127,9 +127,15 @@ const run = (V, M, id, F) => {
             },
             back: F.back,
             alert: 'danger',
-            submit: a.operator != 'eq' ? null : (V, M, id, F) => {
+            submit: a.operator != 'eq' ? null : (V, M, xid, F) => {
               a.value = v
-              return run(V, M, id, F)
+              if (xid < id) {
+                return null
+              } else if (id == xid) {
+                return check(res)
+              } else {
+                return run(V, M, xid, F)
+              }
             }
           }
         }
