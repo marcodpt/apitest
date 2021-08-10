@@ -6,6 +6,14 @@ import services from './services.js'
 
 var X = null
 
+const load = () => {
+  try {
+    X = JSON.parse(localStorage.getItem('DATA')) || []
+  } catch (err) {
+    X = []
+  }
+}
+
 const back = () => {history.back()}
 
 const K = [
@@ -56,11 +64,7 @@ const getContext = (context, Data, params) => {
   }
 }
 
-try {
-  X = JSON.parse(localStorage.getItem('DATA')) || []
-} catch (err) {
-  X = []
-}
+load()
 
 window.addEventListener('load', () => {
   const router = spa(document.body, {
@@ -184,15 +188,19 @@ window.addEventListener('load', () => {
                     }
                     return M
                   }, {...M})
-                  return Ids.reduce((p, id, i) => p.then(res => {
+                  return Ids.reduce((p, id) => p.then(res => {
                     if (res != null) {
                       return res
                     } else {
                       return submitter(V, Data, id, R)
                     }
                   }), Promise.resolve()).then(W => {
-                    localStorage.clear()
-                    localStorage.setItem('DATA', JSON.stringify(X))
+                    if (S.refresh) {
+                      load()
+                    } else {
+                      localStorage.clear()
+                      localStorage.setItem('DATA', JSON.stringify(X))
+                    }
                     if (!S.multiple) {
                       info = info || label(Data)
                     }

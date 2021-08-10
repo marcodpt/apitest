@@ -149,6 +149,24 @@ const run = (V, M, id, F) => {
     .catch(err => check(err))
 }
 
+const runSchema = {
+  type: 'primary',
+  icon: 'play',
+  title: 'Exec',
+  description: info => '',
+  finish: 'passed'
+}
+
+const runTest = (V, M, id, F) => {
+  return V[id].requests.reduce((p, r, i) => p.then(res => {
+    if (res != null) {
+      return res
+    } else {
+      return run(V[id].requests, M, i, F)
+    }
+  }), Promise.resolve())
+}
+
 export default {
   post: {
     type: 'success',
@@ -187,16 +205,29 @@ export default {
     }
   },
   run: {
-    type: 'primary',
-    icon: 'play',
-    title: 'Exec',
-    description: info => '',
-    finish: 'passed',
+    ...runSchema,
     batch: true,
     submit: run
   },
+  runTest: {
+    ...runSchema,
+    batch: true,
+    submit: runTest
+  },
+  runAll: {
+    ...runSchema,
+    multiple: true,
+    submit: (V, M, x, F) => 
+      V.reduce((p, v, id) => p.then(res => {
+        if (res != null) {
+          return res
+        } else {
+          return runTest(V, M, id, F)
+        }
+      }), Promise.resolve())
+  },
   save: {
-    type: 'primary',
+    type: 'info',
     icon: 'save',
     title: 'Save',
     description: info => '',
@@ -218,6 +249,11 @@ export default {
     type: 'light',
     icon: 'file',
     title: 'Import',
+    description: info => [
+      'Are you sure to import file?',
+      'This will override all data!'
+    ].join('\n'),
+    refresh: true,
     Fields: [
       {
         key: 'file',
@@ -225,15 +261,38 @@ export default {
         format: 'file'
       }
     ],
-    submit: (V, M) => {
-      try {
-        M.file[0]
-      } catch (err) {
-
-      }
-      console.log(V)
-      console.log(M)
-    }
+    submit: (V, M, id, F) =>
+      new Promise((resolve, reject) => {
+        var reader = new FileReader()
+        reader.onloadend = function () {
+          if (reader.error) {
+            reject(reader.error)
+          } else {
+            resolve(reader.result)
+          }
+        }
+        reader.readAsText(M.file[0], 'UTF-8')
+      }).then(data => {
+        localStorage.setItem('DATA', JSON.stringify(JSON.parse(data)))
+        return {
+          schema: {
+            title: F.schema.title,
+            description: 'File imported: <'+M.file[0].name+'>'
+          },
+          alert: 'success',
+          back: F.back
+        }
+      }).catch(err => {
+        console.log(err)
+        return {
+          schema: {
+            title: F.schema.title,
+            description: 'Error to import file: <'+M.file[0].name+'>'
+          },
+          alert: 'danger',
+          back: F.back
+        }
+      })
   },
   clear: {
     type: 'danger',

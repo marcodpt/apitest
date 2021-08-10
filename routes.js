@@ -39,7 +39,9 @@ export default [
       'import',
       'clear',
       'delete',
-      'put'
+      'put',
+      'runTest',
+      'runAll'
     ]
   }, {
     route: '#/tests/:test_id/requests',
