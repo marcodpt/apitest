@@ -28,6 +28,7 @@ export default [
       }, {
         key: 'env',
         type: 'string',
+        format: 'text',
         title: 'Env',
         get: X => JSON.stringify(X, undefined, 2),
         post: {}
@@ -41,7 +42,8 @@ export default [
       'delete',
       'put',
       'runTest',
-      'runAll'
+      'runAll',
+      'github'
     ]
   }, {
     route: '#/tests/:test_id/requests',

@@ -48,7 +48,7 @@ const getLinks = (Services, global, href) => Object.keys(services)
   ) && Services.indexOf(key) != -1)
   .map(key => ({
     ...services[key],
-    href: href+(global ? '/' : '/{id}/')+key,
+    href: services[key].href || href+(global ? '/' : '/{id}/')+key,
     batch: !global && services[key].batch ? href+`/{_ids}/${key}` : false
   }))
 
@@ -131,7 +131,7 @@ window.addEventListener('load', () => {
       })
 
       return Routes.concat(Services
-        .filter(key => services[key] != null)
+        .filter(key => services[key] != null && services[key].href == null)
         .map(service => {
           const S = services[service]
           return {
@@ -235,7 +235,7 @@ window.addEventListener('load', () => {
                         P[key].default = F && F.formatter ? F.formatter(v) : v
                         return P
                       }, P),
-                    required: S.description ? [] : Q
+                    required: S.description && !S.Fields ? [] : Q
                   },
                   alert: 'info',
                   back: back,

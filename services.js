@@ -259,6 +259,11 @@ export default {
         key: 'file',
         type: 'array',
         format: 'file'
+      }, {
+        key: 'type',
+        type: 'string',
+        enum: ['raw', 'old'],
+        default: 'raw'
       }
     ],
     submit: (V, M, id, F) =>
@@ -273,7 +278,26 @@ export default {
         }
         reader.readAsText(M.file[0], 'UTF-8')
       }).then(data => {
-        localStorage.setItem('DATA', JSON.stringify(JSON.parse(data)))
+        var X = JSON.parse(data)
+        if (M.type == 'old') {
+          V.push({
+            name: M.file[0].name,
+            env: X.env,
+            requests: X.H.map(row => ({
+              method: row.method,
+              url: row.url,
+              params: row.params,
+              vars: row.vars,
+              assertions: row.tests.map(t => ({
+                expression: t.exp,
+                operator: t.op,
+                value: t.value
+              }))
+            }))
+          })
+          X = V
+        }
+        localStorage.setItem('DATA', JSON.stringify(X))
         return {
           schema: {
             title: F.schema.title,
@@ -307,5 +331,11 @@ export default {
     submit: (V, M) => {
       V.length = 0
     }
+  },
+  github: {
+    type: 'dark',
+    icon: '@github',
+    title: 'Fork me on GitHub',
+    href: 'https://github.com/marcodpt/apitest'
   }
 }
