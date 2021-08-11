@@ -85,14 +85,15 @@ const run = (V, M, id, F) => {
   const A = V[id].assertions
   const q = query(params)
   const label = `${id+1}: ${V[id].method} ${url+(q ? '?' : '')+q}`
+  const host = localStorage.getItem('HOST') || ''
   if ([
     'post',
     'put',
     'patch'
   ].indexOf(method) != -1) {
-    p = axios[method](url, params)
+    p = axios[method](host+url, params)
   } else {
-    p = axios[method](url+(q ? '?' : '')+q)
+    p = axios[method](host+url+(q ? '?' : '')+q)
   }
 
   const check = res => {
@@ -331,7 +332,7 @@ export default {
     submit: (V, M) => {
       V.length = 0
     }
-  },
+  }, 
   github: {
     type: 'dark',
     icon: '@github',

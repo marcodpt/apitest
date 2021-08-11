@@ -27,10 +27,18 @@
       This module depend on CORS to make API requests.<br/>
       Please find out on your browser how to enable CORS!
     </div>
-    <a
-      class="btn btn-primary btn-lg"
-      href="#/tests"
-    ><i class="fas fa-star"></i> Start Now!</a>
+    <div class="input-group mb-3">
+      <input
+        type="text"
+        class="form-control"
+        placeholder="Your host url"
+        oninput="localStorage.setItem('HOST', this.value)"
+      />
+      <a
+        class="btn btn-primary btn-lg"
+        href="#/tests"
+      ><i class="fas fa-star"></i> Start Now!</a>
+    </div>
   </div>
 </body>
 </html>

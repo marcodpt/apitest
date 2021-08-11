@@ -198,7 +198,6 @@ window.addEventListener('load', () => {
                     if (S.refresh) {
                       load()
                     } else {
-                      localStorage.clear()
                       localStorage.setItem('DATA', JSON.stringify(X))
                     }
                     if (!S.multiple) {
