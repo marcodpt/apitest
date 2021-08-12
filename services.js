@@ -1,10 +1,13 @@
 import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
 import axios from
   'https://cdn.jsdelivr.net/npm/redaxios@0.4.1/dist/redaxios.module.js'
+axios.defaults.withCredentials = true
 
 const jpath = (X, P) => {
   var R = X
   var stop = false
+  console.log(X)
+  console.log(P)
 
   P.forEach((p, i) => {
     if (stop) {
@@ -19,7 +22,7 @@ const jpath = (X, P) => {
       var val = null
       const F = {}
 
-      exp.substr(1).split(',').forEach(m => {
+      p.substr(1).split(',').forEach(m => {
         const M = m.split(':')
         if (M.length == 1) {
           F[M[0]] = M[0]
@@ -34,6 +37,7 @@ const jpath = (X, P) => {
 
       var Y = key == '' ? [] : {}
       R.forEach(r => {
+        console.log(r)
         var y = null
         if (val) {
           y = r[val]
@@ -54,7 +58,7 @@ const jpath = (X, P) => {
       R = Y
     } else if (p == '*' && R instanceof Array) {
       const S = []
-      R.forEach(r => S.append(jpath(r, P.filter((p, j) => j > i))))
+      R.forEach(r => S.push(jpath(r, P.filter((p, j) => j > i))))
       R = S
       stop = true
     } else if (R != null) {
@@ -69,7 +73,10 @@ const jpath = (X, P) => {
   return R
 }
 
-const out = X => JSON.stringify(X, undefined, 2)
+const out = X => JSON.stringify(X, 
+  X && typeof X == 'object' && !(X instanceof Array) ? 
+    Object.keys(X).sort() : null
+, 2)
 
 const Op = {
   eq: (a, b) => out(a) == out(b),
@@ -77,26 +84,41 @@ const Op = {
   gt: (a, b) => parseFloat(a) > parseFloat(b)
 }
 
-const run = (V, M, id, F) => {
+const run = (V, M, id, F, done) => {
   var p = null
-  const method = V[id].method.toLowerCase()
+  const method = V[id].method
   const params = V[id].params
   const url = V[id].url
   const A = V[id].assertions
   const q = query(params)
-  const label = `${id+1}: ${V[id].method} ${url+(q ? '?' : '')+q}`
+  const label = `${id+1}: ${method} ${url+(q ? '?' : '')+q}`
   const host = localStorage.getItem('HOST') || ''
-  if ([
-    'post',
-    'put',
-    'patch'
-  ].indexOf(method) != -1) {
-    p = axios[method](host+url, params)
+  if (method != 'GET') {
+    p = new Promise ((resolve, reject) => {
+      axios({
+        url: host+url,
+        method: method,
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8'
+        },
+        data: JSON.stringify(params)
+      }).then(res => {
+        resolve({
+          ...res,
+          mime: res.headers.get('Content-Type')
+        })
+      }).catch(err => {
+        reject(err)
+      })
+    })
   } else {
-    p = axios[method](host+url+(q ? '?' : '')+q)
+    p = axios.get(host+url+(q ? '?' : '')+q)
   }
 
   const check = res => {
+    if (typeof done == 'function') {
+      done(res)
+    }
     var R = null
     A.forEach(a => {
       if (R == null) {
@@ -159,11 +181,18 @@ const runSchema = {
 }
 
 const runTest = (V, M, id, F) => {
+  V[id].env = {}
+
   return V[id].requests.reduce((p, r, i) => p.then(res => {
     if (res != null) {
       return res
     } else {
-      return run(V[id].requests, M, i, F)
+      return run(V[id].requests, M, i, F, res => {
+        const W = V[id].requests[i].vars
+        Object.keys(W).forEach(key => {
+          V[id].env[key] = jpath(res, W[key].split('.'))
+        })
+      })
     }
   }), Promise.resolve())
 }
@@ -203,6 +232,17 @@ export default {
         ...V[id],
         ...M
       }
+    }
+  },
+  copy: {
+    type: 'success',
+    icon: 'copy',
+    title: 'Copy request',
+    finish: 'copied',
+    description: info => ``,
+    batch: false,
+    submit: (V, M, id) => {
+      V.push(JSON.parse(JSON.stringify(V[id])))
     }
   },
   run: {
@@ -333,6 +373,34 @@ export default {
       V.length = 0
     }
   }, 
+  cors: {
+    type: 'warning',
+    icon: 'flask',
+    title: 'Test Cors',
+    description: info => '',
+    multiple: true,
+    submit: (V, M, id, F) => 
+      axios.get('https://www.google.com').then(res => {
+        return {
+          schema: {
+            title: F.schema.title,
+            description: 'CORS is enabled!'
+          },
+          alert: 'success',
+          back: F.back
+        }
+      }).catch(err => {
+        console.log(err)
+        return {
+          schema: {
+            title: F.schema.title,
+            description: 'CORS is NOT enabled!'
+          },
+          alert: 'danger',
+          back: F.back
+        }
+      })
+  },
   github: {
     type: 'dark',
     icon: '@github',

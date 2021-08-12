@@ -1,7 +1,13 @@
 import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
 
-const fromStr = str => query(str.split('\n').join('&'))
-const toStr = X => query(X).split('&').join('\n')
+const fromStr = (str, force) => {
+  try {
+    return JSON.parse(str)
+  } catch (err) {
+    return force ? str : {}
+  }
+}
+const toStr = X => JSON.stringify(X, undefined, 2)
 
 export default [
   {
@@ -30,7 +36,7 @@ export default [
         type: 'string',
         format: 'text',
         title: 'Env',
-        get: X => JSON.stringify(X, undefined, 2),
+        get: toStr,
         post: {}
       }
     ],
@@ -43,6 +49,7 @@ export default [
       'put',
       'runTest',
       'runAll',
+      'cors',
       'github'
     ]
   }, {
@@ -102,6 +109,7 @@ export default [
       'post',
       'delete',
       'put',
+      'copy',
       'run'
     ]
   }, {
@@ -138,14 +146,8 @@ export default [
         type: 'string',
         default: '',
         format: 'text',
-        parser: X => {
-          try {
-            return JSON.parse(X)
-          } catch (err) {
-            return X
-          }
-        },
-        formatter: X => JSON.stringify(X, undefined, 2)
+        parser: X => fromStr(X, true),
+        formatter: X => toStr(X)
       }
     ],
     Services: [
