@@ -58,6 +58,9 @@ export default [
     name: 'Requests',
     item: 'Request',
     source: (Data, {test_id}) => Data[test_id].requests,
+    extra: (Data, {test_id}) => ({
+      $: Data[test_id].env
+    }),
     label: Row => Row.method+' '+Row.url+'?'+query(Row.params),
     Fields: [
       {

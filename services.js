@@ -6,8 +6,6 @@ axios.defaults.withCredentials = true
 const jpath = (X, P) => {
   var R = X
   var stop = false
-  console.log(X)
-  console.log(P)
 
   P.forEach((p, i) => {
     if (stop) {
@@ -37,7 +35,6 @@ const jpath = (X, P) => {
 
       var Y = key == '' ? [] : {}
       R.forEach(r => {
-        console.log(r)
         var y = null
         if (val) {
           y = r[val]
@@ -62,7 +59,11 @@ const jpath = (X, P) => {
       R = S
       stop = true
     } else if (R != null) {
-      if (typeof R == 'object' && R[p] != null) {
+      if (R instanceof Array) {
+        p = parseInt(p)
+        p = p < 0 ? R.length + p : p
+        R = R[p]
+      } else if (typeof R == 'object' && R[p] != null) {
         R = R[p]
       } else {
         R = null
@@ -84,11 +85,17 @@ const Op = {
   gt: (a, b) => parseFloat(a) > parseFloat(b)
 }
 
-const run = (V, M, id, F, done) => {
+const render = (tpl, X) => 
+  tpl.replace(
+    /\{([A-Za-z0-9_\.\$]+?)\}/g,
+    (str, path) => jpath(X, path.split('.'))
+  )
+
+const run = (V, M, id, F, E, done) => {
   var p = null
   const method = V[id].method
-  const params = V[id].params
-  const url = V[id].url
+  const params = JSON.parse(render(JSON.stringify(V[id].params), E))
+  const url = render(V[id].url, E)
   const A = V[id].assertions
   const q = query(params)
   const label = `${id+1}: ${method} ${url+(q ? '?' : '')+q}`
@@ -150,14 +157,14 @@ const run = (V, M, id, F, done) => {
             },
             back: F.back,
             alert: 'danger',
-            submit: a.operator != 'eq' ? null : (V, M, xid, F) => {
+            submit: a.operator != 'eq' ? null : (V, M, xid, F, E) => {
               a.value = v
               if (xid < id) {
                 return null
               } else if (id == xid) {
                 return check(res)
               } else {
-                return run(V, M, xid, F)
+                return run(V, M, xid, F, E)
               }
             }
           }
@@ -187,7 +194,7 @@ const runTest = (V, M, id, F) => {
     if (res != null) {
       return res
     } else {
-      return run(V[id].requests, M, i, F, res => {
+      return run(V[id].requests, M, i, F, {$: V[id].env}, res => {
         const W = V[id].requests[i].vars
         Object.keys(W).forEach(key => {
           V[id].env[key] = jpath(res, W[key].split('.'))
@@ -380,16 +387,14 @@ export default {
     description: info => '',
     multiple: true,
     submit: (V, M, id, F) => 
-      axios.get('https://www.google.com').then(res => {
-        return {
-          schema: {
-            title: F.schema.title,
-            description: 'CORS is enabled!'
-          },
-          alert: 'success',
-          back: F.back
-        }
-      }).catch(err => {
+      axios.get('https://www.google.com').then(res => ({
+        schema: {
+          title: F.schema.title,
+          description: 'CORS is enabled!'
+        },
+        alert: 'success',
+        back: F.back
+      })).catch(err => {
         console.log(err)
         return {
           schema: {

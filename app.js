@@ -74,6 +74,7 @@ window.addEventListener('load', () => {
       name,
       item,
       source,
+      extra,
       label,
       Fields,
       Services
@@ -145,6 +146,7 @@ window.addEventListener('load', () => {
               const pre = getContext(context, X, params)
               const title = `${pre}${S.title} ${S.multiple ? name : item}`
               var V = source(X, params)
+              var E = extra ? extra(X, params) : {}
               var id = null
               
               if (params.id != null) {
@@ -192,7 +194,7 @@ window.addEventListener('load', () => {
                     if (res != null) {
                       return res
                     } else {
-                      return submitter(V, Data, id, R)
+                      return submitter(V, Data, id, R, E)
                     }
                   }), Promise.resolve()).then(W => {
                     if (S.refresh) {
