@@ -1,3 +1,4 @@
+import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
 import spa from 'https://cdn.jsdelivr.net/gh/marcodpt/spa@0.0.1/index.js'
 import {form} from 'https://cdn.jsdelivr.net/gh/marcodpt/form@0.0.5/index.js'
 import {table} from 'https://cdn.jsdelivr.net/gh/marcodpt/table@0.0.9/index.js'
@@ -20,7 +21,7 @@ const K = [
   'key',
   'formatter',
   'parser',
-  'get',
+  'get'
 ].concat(Object.keys(services))
 
 const getProp = (Fields, params, Base) => Fields.reduce((P, F) => {
@@ -99,6 +100,14 @@ window.addEventListener('load', () => {
             check: true,
             limit: 10,
             back: back,
+            change: M => {
+              const H = location.hash.split('?')
+              const path = H.shift()
+              const Q = query(H.join('?'))
+              location.replace(path+'?'+query({
+                ...M
+              }))
+            },
             schema: {
               type: 'array',
               title: getContext(context, X, params)+name,
