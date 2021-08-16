@@ -3,8 +3,10 @@ import axios from
   'https://cdn.jsdelivr.net/npm/redaxios@0.4.1/dist/redaxios.module.js'
 axios.defaults.withCredentials = true
 
+const maybe = X => X == null ? null : X
+
 const jpath = (X, P) => {
-  var R = X
+  var R = maybe(X)
   var stop = false
 
   P.forEach((p, i) => {
@@ -23,13 +25,13 @@ const jpath = (X, P) => {
       p.substr(1).split(',').forEach(m => {
         const M = m.split(':')
         if (M.length == 1) {
-          F[M[0]] = M[0]
+          F[M[0]] = maybe(M[0])
         } else if (M[1] == '$') {
-          key = M[0]
+          key = maybe(M[0])
         } else if (M[1] == '!') {
-          val = M[0]
+          val = maybe(M[0])
         } else {
-          F[M[0]] = M[1]
+          F[M[0]] = maybe(M[1])
         }
       })
 
@@ -37,18 +39,18 @@ const jpath = (X, P) => {
       R.forEach(r => {
         var y = null
         if (val) {
-          y = r[val]
+          y = maybe(r[val])
         } else {
           y = {}
           Object.keys(F).forEach(f => {
-            y[F[f]] = r[f] != null ? r[f] : null
+            y[F[f]] = maybe(r[f])
           })
         }
 
         if (key == '') {
-          Y.push(y)
+          Y.push(maybe(y))
         } else {
-          Y[r[key]] = y
+          Y[r[key]] = maybe(y)
         }
       })
 
@@ -62,7 +64,7 @@ const jpath = (X, P) => {
       if (R instanceof Array) {
         p = parseInt(p)
         p = p < 0 ? R.length + p : p
-        R = R[p]
+        R = maybe(R[p])
       } else if (typeof R == 'object' && R[p] != null) {
         R = R[p]
       } else {
@@ -74,25 +76,24 @@ const jpath = (X, P) => {
   return R
 }
 
-const out = X => JSON.stringify(X, 
-  X && typeof X == 'object' && !(X instanceof Array) ? 
-    Object.keys(X).sort() : null
-, 2)
-
-const Op = {
-  eq: (a, b) => out(a) == out(b),
-  ne: (a, b) => out(a) != out(b),
-  gt: (a, b) => parseFloat(a) > parseFloat(b)
-}
-
 const render = (tpl, X) => 
   tpl.replace(
-    /\{([A-Za-z0-9_\.\$]+?)\}/g,
+    /\{\$\.([A-Za-z0-9_\.]+?)\}/g,
     (str, path) => jpath(X, path.split('.'))
   )
 
+const out = (X, E) => render(JSON.stringify(X, 
+  X && typeof X == 'object' && !(X instanceof Array) ? 
+    Object.keys(X).sort() : null
+, 2), E)
+
+const Op = {
+  eq: (a, b, E) => out(a) == out(b, E),
+  ne: (a, b, E) => out(a) != out(b, E),
+  gt: (a, b, E) => parseFloat(a) > parseFloat(b)
+}
+
 const run = (V, M, id, F, E, done) => {
-  var p = null
   const method = V[id].method
   const params = JSON.parse(render(JSON.stringify(V[id].params), E))
   const url = render(V[id].url, E)
@@ -100,27 +101,27 @@ const run = (V, M, id, F, E, done) => {
   const q = query(params)
   const label = `${id+1}: ${method} ${url+(q ? '?' : '')+q}`
   const host = localStorage.getItem('HOST') || ''
-  if (method != 'GET') {
-    p = new Promise ((resolve, reject) => {
-      axios({
-        url: host+url,
-        method: method,
-        headers: {
-          'Content-Type': 'text/plain;charset=UTF-8'
-        },
-        data: JSON.stringify(params)
-      }).then(res => {
-        resolve({
-          ...res,
-          mime: res.headers.get('Content-Type')
-        })
-      }).catch(err => {
-        reject(err)
+  const p = new Promise ((resolve, reject) => {
+    axios({
+      url: host+url+(method != 'GET' ? '' : ((q ? '?' : '')+q)),
+      method: method,
+      data: method == 'GET' ? null : params
+    }).then(res => {
+      resolve({
+        ...res,
+        mime: res.headers.get('Content-Type')
+      })
+    }).catch(res => {
+      var mime = ''
+      try {
+        mime = res.headers.get('Content-Type')
+      } catch (err) {}
+      reject({
+        ...res,
+        mime: mime
       })
     })
-  } else {
-    p = axios.get(host+url+(q ? '?' : '')+q)
-  }
+  })
 
   const check = res => {
     if (typeof done == 'function') {
@@ -139,7 +140,7 @@ const run = (V, M, id, F, E, done) => {
             alert: 'danger',
             back: F.back
           }
-        } else if (!Op[a.operator](v, a.value)) {
+        } else if (!Op[a.operator](v, a.value, E)) {
           R = {
             schema: {
               title: F.schema.title,
@@ -147,7 +148,7 @@ const run = (V, M, id, F, E, done) => {
                 label,
                 `Error: ${a.expression} ${a.operator}`,
                 `***** Expected *****`,
-                out(a.value),
+                out(a.value, E),
                 `***** Result   *****`,
                 out(v)
               ].concat(a.operator != 'eq' ? [] : [
@@ -390,7 +391,7 @@ export default {
       axios.get('https://www.google.com').then(res => ({
         schema: {
           title: F.schema.title,
-          description: 'CORS is enabled!'
+          description: 'CORS is enabled! ('+localStorage.getItem('HOST')+')'
         },
         alert: 'success',
         back: F.back
@@ -399,7 +400,8 @@ export default {
         return {
           schema: {
             title: F.schema.title,
-            description: 'CORS is NOT enabled!'
+            description: 'CORS is NOT enabled! ('+
+              localStorage.getItem('HOST')+')'
           },
           alert: 'danger',
           back: F.back
