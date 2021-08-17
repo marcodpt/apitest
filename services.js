@@ -3,9 +3,9 @@ import axios from
   'https://cdn.jsdelivr.net/npm/redaxios@0.4.1/dist/redaxios.module.js'
 axios.defaults.withCredentials = true
 
-const maybe = X => X == null ? null : X
+const maybe = (X, def) => X == null ? def || null : X
 
-const jpath = (X, P) => {
+const jpath = (X, P, inside) => {
   var R = maybe(X)
   var stop = false
 
@@ -57,7 +57,7 @@ const jpath = (X, P) => {
       R = Y
     } else if (p == '*' && R instanceof Array) {
       const S = []
-      R.forEach(r => S.push(jpath(r, P.filter((p, j) => j > i))))
+      R.forEach(r => S.push(jpath(r, P.filter((p, j) => j > i), inside)))
       R = S
       stop = true
     } else if (R != null) {
@@ -73,13 +73,15 @@ const jpath = (X, P) => {
     }
   })
 
-  return R
+  return typeof R == 'string' && inside ? R.split('\n').join('\\n') : R
 }
 
 const render = (tpl, X) => 
   tpl.replace(
     /\{\$\.([A-Za-z0-9_\.]+?)\}/g,
-    (str, path) => jpath(X, path.split('.'))
+    (str, path) => maybe(jpath(
+      X, ['$'].concat(path.split('.')), X != null
+    ), '')
   )
 
 const out = (X, E) => render(JSON.stringify(X, 
