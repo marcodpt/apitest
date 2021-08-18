@@ -190,21 +190,68 @@ const runSchema = {
   finish: 'passed'
 }
 
-const runTest = (V, M, id, F) => {
+const runTest = (V, M, id, F, E, status) => {
   V[id].env = {}
+  const layout = {
+    bg: 'success'
+  }
+  const start = + new Date()
+  const setLabel = i => {
+    const now = + new Date()
+    const time = ((now - start) / 1000).toFixed(1)
+    return `[${id+1}] ${V[id].name} [${i}/${V[id].requests.length}] ${time}s`
+  }
 
-  return V[id].requests.reduce((p, r, i) => p.then(res => {
-    if (res != null) {
-      return res
-    } else {
-      return run(V[id].requests, M, i, F, {$: V[id].env}, res => {
-        const W = V[id].requests[i].vars
-        Object.keys(W).forEach(key => {
-          V[id].env[key] = jpath(res, W[key].split('.'))
+  status({
+    ...layout,
+    width: '0%',
+    label: setLabel(0)
+  })
+
+  return new Promise((resolve, reject) => {
+    V[id].requests.reduce((p, r, i) => p.then(res => {
+      if (res != null) {
+        return res
+      } else {
+        status({
+          ...layout,
+          width: `${(100 * (i+1) / V[id].requests.length).toFixed(2)}%`,
+          label: setLabel(i+1)
         })
-      })
-    }
-  }), Promise.resolve())
+        return run(V[id].requests, M, i, F, {$: V[id].env}, res => {
+          const W = V[id].requests[i].vars
+          Object.keys(W).forEach(key => {
+            V[id].env[key] = jpath(res, W[key].split('.'))
+          })
+        })
+      }
+    }), Promise.resolve()).then(res => {
+      resolve(res || setLabel(V[id].requests.length))
+    }).catch(err => {
+      reject(err)
+    })
+  })
+}
+
+const summary = Msg => {
+  const X = Msg.map(msg => msg.split(' ')).map(M => ({
+    assertions: parseInt(M[2].substr(1).split('/')[0]),
+    time: parseFloat(M[3].substr(0, M[3].length - 1))
+  })).reduce((X, M) => {
+    X.assertions += M.assertions
+    X.time += M.time
+    return X
+  }, {
+    assertions: 0,
+    time: 0.0
+  })
+
+  return [
+    'SUMMARY',
+    `#Tests: ${Msg.length}`,
+    `#Assertions: ${X.assertions}`,
+    `Time: ${X.time.toFixed(1)}s`
+  ].join('\n')
 }
 
 export default {
@@ -263,19 +310,38 @@ export default {
   runTest: {
     ...runSchema,
     batch: true,
+    summary: summary,
     submit: runTest
   },
   runAll: {
     ...runSchema,
     multiple: true,
-    submit: (V, M, x, F) => 
+    summary: summary,
+    submit: (V, M, x, F, E, status) => new Promise ((resolve, reject) => {
+      const Msg = []
+      const addMsg = X => {
+        if (typeof X == 'string') {
+          if (X) {
+            Msg.push(X)
+          }
+          X = null
+        }
+        return X
+      }
       V.reduce((p, v, id) => p.then(res => {
+        res = addMsg(res)
         if (res != null) {
           return res
         } else {
-          return runTest(V, M, id, F)
+          return runTest(V, M, id, F, E, status)
         }
-      }), Promise.resolve())
+      }), Promise.resolve()).then(res => {
+        res = addMsg(res)
+        resolve(res == null && Msg.length ? Msg.join('\n - ') : res)
+      }).catch(err => {
+        resolve(err)
+      })
+    })
   },
   save: {
     type: 'info',

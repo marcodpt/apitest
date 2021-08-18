@@ -1,5 +1,5 @@
 import query from 'https://cdn.jsdelivr.net/gh/marcodpt/query@0.0.2/index.js'
-import spa from 'https://cdn.jsdelivr.net/gh/marcodpt/spa@0.0.1/index.js'
+import spa from 'https://cdn.jsdelivr.net/gh/marcodpt/spa@0.0.2/index.js'
 import {form} from 'https://cdn.jsdelivr.net/gh/marcodpt/form@0.0.5/index.js'
 import {table} from 'https://cdn.jsdelivr.net/gh/marcodpt/table@0.0.9/index.js'
 import routes from './routes.js'
@@ -147,7 +147,7 @@ window.addEventListener('load', () => {
           return {
             route: route+(S.batch == null ? '/' : '/:id/')+service,
             comp: form,
-            mount: params => {
+            mount: (params, status) => {
               const G = S.Fields || Fields
               const P = getProp(G, params)
               const Ids = []
@@ -199,13 +199,25 @@ window.addEventListener('load', () => {
                     }
                     return M
                   }, {...M})
+                  const Msg = []
+                  const addMsg = X => {
+                    if (typeof X == 'string') {
+                      if (X) {
+                        Msg.push(X)
+                      }
+                      X = null
+                    }
+                    return X
+                  }
                   return Ids.reduce((p, id) => p.then(res => {
+                    res = addMsg(res)
                     if (res != null) {
                       return res
                     } else {
-                      return submitter(V, Data, id, R, E)
+                      return submitter(V, Data, id, R, E, status)
                     }
                   }), Promise.resolve()).then(W => {
+                    W = addMsg(W)
                     if (S.refresh) {
                       load()
                     } else {
@@ -214,6 +226,12 @@ window.addEventListener('load', () => {
                     if (!S.multiple) {
                       info = info || label(Data)
                     }
+                    if (Msg.length) {
+                      info = '\n - '+Msg.join('\n - ')+'\n'
+                      if (S.summary) {
+                        info += S.summary(Msg)+'\n'
+                      }
+                    } 
 
                     if (W && W.submit) {
                       W.submit = run(W.submit)
@@ -223,7 +241,8 @@ window.addEventListener('load', () => {
                       schema: {
                         type: 'object',
                         title: title,
-                        description: S.multiple ? `${name}: ${S.finish}` :
+                        description: S.multiple ? 
+                          `${name}: ${Msg.length ? info+' ' : ''}${S.finish}` :
                           `${item}: ${info} ${S.finish}!`
                       },
                       alert: 'success',
