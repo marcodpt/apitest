@@ -95,7 +95,7 @@ const Op = {
   gt: (a, b, E) => parseFloat(a) > parseFloat(b)
 }
 
-const run = (V, M, id, F, E, done) => {
+const run = (V, M, id, F, E) => {
   const method = V[id].method
   const params = JSON.parse(render(JSON.stringify(V[id].params), E))
   const url = render(V[id].url, E)
@@ -126,9 +126,6 @@ const run = (V, M, id, F, E, done) => {
   })
 
   const check = res => {
-    if (typeof done == 'function') {
-      done(res)
-    }
     var R = null
     A.forEach(a => {
       if (R == null) {
@@ -174,6 +171,13 @@ const run = (V, M, id, F, E, done) => {
         }
       }
     })
+
+    if (R == null) {
+      const W = V[id].vars
+      Object.keys(W).forEach(key => {
+        E.$[key] = jpath(res, W[key].split('.'))
+      })
+    }
     return R
   }
 
@@ -218,12 +222,7 @@ const runTest = (V, M, id, F, E, status) => {
           width: `${(100 * (i+1) / V[id].requests.length).toFixed(2)}%`,
           label: setLabel(i+1)
         })
-        return run(V[id].requests, M, i, F, {$: V[id].env}, res => {
-          const W = V[id].requests[i].vars
-          Object.keys(W).forEach(key => {
-            V[id].env[key] = jpath(res, W[key].split('.'))
-          })
-        })
+        return run(V[id].requests, M, i, F, {$: V[id].env})
       }
     }), Promise.resolve()).then(res => {
       resolve(res || setLabel(V[id].requests.length))
@@ -316,7 +315,10 @@ export default {
   runAll: {
     ...runSchema,
     multiple: true,
-    summary: summary,
+    description: () => 
+      `Are you ready?\n`+
+      `This may take long...`,
+    summary: Msg => summary(Msg[0].split('\n - ')),
     submit: (V, M, x, F, E, status) => new Promise ((resolve, reject) => {
       const Msg = []
       const addMsg = X => {
@@ -455,11 +457,12 @@ export default {
     title: 'Test Cors',
     description: info => '',
     multiple: true,
-    submit: (V, M, id, F) => 
-      axios.get('https://www.google.com').then(res => ({
+    submit: (V, M, id, F) =>  {
+      const host = localStorage.getItem('HOST')
+      return axios.get(host).then(res => ({
         schema: {
           title: F.schema.title,
-          description: 'CORS is enabled! ('+localStorage.getItem('HOST')+')'
+          description: `CORS is enabled! (${host})`
         },
         alert: 'success',
         back: F.back
@@ -468,13 +471,13 @@ export default {
         return {
           schema: {
             title: F.schema.title,
-            description: 'CORS is NOT enabled! ('+
-              localStorage.getItem('HOST')+')'
+            description: `CORS is NOT enabled! (${host})`
           },
           alert: 'danger',
           back: F.back
         }
       })
+    }
   },
   github: {
     type: 'dark',

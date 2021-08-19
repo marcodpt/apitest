@@ -16,6 +16,14 @@ export default [
     item: 'Test',
     source: Data => Data,
     label: Row => Row.name,
+    totals: Data => Data.reduce((T, row) => {
+      T.index += 1
+      T.requests += row.requests
+      return T
+    }, {
+      index: 0,
+      requests: 0
+    }),
     Fields: [
       {
         key: 'name',
@@ -50,7 +58,8 @@ export default [
       'runTest',
       'runAll',
       'cors',
-      'github'
+      'github',
+      'copy'
     ]
   }, {
     route: '#/tests/:test_id/requests',
@@ -62,6 +71,14 @@ export default [
       $: Data[test_id].env
     }),
     label: Row => Row.method+' '+Row.url+'?'+query(Row.params),
+    totals: Data => Data.reduce((T, row) => {
+      T.index += 1
+      T.assertions += row.assertions
+      return T
+    }, {
+      index: 0,
+      assertions: 0
+    }),
     Fields: [
       {
         key: 'method',
@@ -85,9 +102,9 @@ export default [
         minLength: 1
       }, {
         key: 'params',
-        title: 'Params',
+        title: 'Params (json)',
         type: 'string',
-        default: '',
+        default: '{}',
         format: 'text',
         parser: X => fromStr(X),
         formatter: X => toStr(X)
@@ -100,9 +117,9 @@ export default [
         post: []
       }, {
         key: 'vars',
-        title: 'Vars',
+        title: 'Vars (json)',
         type: 'string',
-        default: '',
+        default: '{}',
         format: 'text',
         parser: X => fromStr(X),
         formatter: X => toStr(X)
@@ -131,6 +148,12 @@ export default [
       req_id
     }) => Data[test_id].requests[req_id].assertions,
     label: Row => Row.expression+' '+Row.operator+' '+Row.value,
+    totals: Data => Data.reduce((T, row) => {
+      T.index += 1
+      return T
+    }, {
+      index: 0
+    }),
     Fields: [
       {
         key: 'expression',

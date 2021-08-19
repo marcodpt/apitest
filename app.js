@@ -77,6 +77,7 @@ window.addEventListener('load', () => {
       source,
       extra,
       label,
+      totals,
       Fields,
       Services
     }) => {
@@ -100,6 +101,7 @@ window.addEventListener('load', () => {
             check: true,
             limit: 10,
             back: back,
+            totals: totals,
             change: M => {
               const H = location.hash.split('?')
               const path = H.shift()
