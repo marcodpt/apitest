@@ -234,8 +234,8 @@ const runTest = (V, M, id, F, E, status) => {
 
 const summary = Msg => {
   const X = Msg.map(msg => msg.split(' ')).map(M => ({
-    assertions: parseInt(M[2].substr(1).split('/')[0]),
-    time: parseFloat(M[3].substr(0, M[3].length - 1))
+    assertions: parseInt(M[M.length - 2].substr(1).split('/')[0]),
+    time: parseFloat(M[M.length - 1].substr(0, M[M.length - 1].length - 1))
   })).reduce((X, M) => {
     X.assertions += M.assertions
     X.time += M.time
@@ -315,9 +315,6 @@ export default {
   runAll: {
     ...runSchema,
     multiple: true,
-    description: () => 
-      `Are you ready?\n`+
-      `This may take long...`,
     summary: Msg => summary(Msg[0].split('\n - ')),
     submit: (V, M, x, F, E, status) => new Promise ((resolve, reject) => {
       const Msg = []
@@ -378,11 +375,6 @@ export default {
         key: 'file',
         type: 'array',
         format: 'file'
-      }, {
-        key: 'type',
-        type: 'string',
-        enum: ['raw', 'old'],
-        default: 'raw'
       }
     ],
     submit: (V, M, id, F) =>
@@ -397,26 +389,10 @@ export default {
         }
         reader.readAsText(M.file[0], 'UTF-8')
       }).then(data => {
-        var X = JSON.parse(data)
-        if (M.type == 'old') {
-          V.push({
-            name: M.file[0].name,
-            env: X.env,
-            requests: X.H.map(row => ({
-              method: row.method,
-              url: row.url,
-              params: row.params,
-              vars: row.vars,
-              assertions: row.tests.map(t => ({
-                expression: t.exp,
-                operator: t.op,
-                value: t.value
-              }))
-            }))
-          })
-          X = V
-        }
-        localStorage.setItem('DATA', JSON.stringify(X))
+        localStorage.setItem(
+          'DATA',
+          JSON.stringify(JSON.parse(data), undefined, 2)
+        )
         return {
           schema: {
             title: F.schema.title,

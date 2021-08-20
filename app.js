@@ -223,7 +223,10 @@ window.addEventListener('load', () => {
                     if (S.refresh) {
                       load()
                     } else {
-                      localStorage.setItem('DATA', JSON.stringify(X))
+                      localStorage.setItem(
+                        'DATA',
+                        JSON.stringify(X, undefined, 2)
+                      )
                     }
                     if (!S.multiple) {
                       info = info || label(Data)
