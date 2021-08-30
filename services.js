@@ -156,10 +156,16 @@ const run = (V, M, id, F, E, action) => {
               }
               if (X.indexOf(Y[j], k) == -1) {
                 Diff.push('(+):'+Y[j])
-              } else {
+              } else if (i == k) {
                 j--
               }
             }
+          }
+          while (i < X.length) {
+            Diff.push('(-):'+X[i++])
+          }
+          while (j < Y.length) {
+            Diff.push('(+):'+Y[j++])
           }
 
           R = {
