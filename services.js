@@ -239,7 +239,7 @@ const runTest = (V, M, id, F, E, status, index) => {
         return null
       } else {
         setStatus(i)
-        const adaptor = overload => (V, M, id, F, E) => 
+        const adaptor = overload => (U, M, id, F, E) => 
           run(V[id].requests, M, i, F, {
             $: V[id].env
           }, adaptor(true)).then(res =>
