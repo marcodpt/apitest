@@ -95,7 +95,7 @@ const Op = {
   gt: (a, b, E) => parseFloat(a) > parseFloat(b)
 }
 
-const run = (V, M, id, F, E) => {
+const run = (V, M, id, F, E, action) => {
   const method = V[id].method
   const params = JSON.parse(render(JSON.stringify(V[id].params), E))
   const url = render(V[id].url, E)
@@ -140,17 +140,41 @@ const run = (V, M, id, F, E) => {
             back: F.back
           }
         } else if (!Op[a.operator](v, a.value, E)) {
+          const x = out(a.value, E)
+          const y = out(v)
+          const Diff = [] 
+          const X = x.split('\n')
+          const Y = y.split('\n')
+
+          for (var i = 0, j = 0; i < X.length && j < Y.length; i++, j++) {
+            if (X[i] != Y[j]) {
+              const k = i
+              if (Y.indexOf(X[i], j) == -1) {
+                Diff.push('(-):'+X[i])
+              } else {
+                i--
+              }
+              if (X.indexOf(Y[j], k) == -1) {
+                Diff.push('(+):'+Y[j])
+              } else {
+                j--
+              }
+            }
+          }
+
           R = {
             schema: {
               title: F.schema.title,
               description: [
                 label,
                 `Error: ${a.expression} ${a.operator}`,
+                `***** Diff     *****`
+              ].concat(Diff).concat([
                 `***** Expected *****`,
-                out(a.value, E),
+                x,
                 `***** Result   *****`,
-                out(v)
-              ].concat(a.operator != 'eq' ? [] : [
+                y
+              ]).concat(a.operator != 'eq' ? [] : [
                 `********************`,
                 `Do you want to update?`
               ]).join('\n').trim()
@@ -159,13 +183,10 @@ const run = (V, M, id, F, E) => {
             alert: 'danger',
             submit: a.operator != 'eq' ? null : (V, M, xid, F, E) => {
               a.value = v
-              if (xid < id) {
-                return null
-              } else if (id == xid) {
-                return check(res)
-              } else {
-                return run(V, M, xid, F, E)
-              }
+              return check(res) || (action ?
+                action(V, M, xid, F, E) :
+                run(V, M, xid, F, E, action)
+              )
             }
           }
         }
@@ -194,35 +215,39 @@ const runSchema = {
   finish: 'passed'
 }
 
-const runTest = (V, M, id, F, E, status) => {
+const runTest = (V, M, id, F, E, status, index) => {
   V[id].env = {}
-  const layout = {
-    bg: 'success'
-  }
   const start = + new Date()
   const setLabel = i => {
     const now = + new Date()
     const time = ((now - start) / 1000).toFixed(1)
     return `[${id+1}] ${V[id].name} [${i}/${V[id].requests.length}] ${time}s`
   }
+  const setStatus = i => {
+    status({
+      bg: 'success',
+      width: `${(100 * (i+1) / V[id].requests.length).toFixed(2)}%`,
+      label: setLabel(i+1)
+    })
+  }
 
-  status({
-    ...layout,
-    width: '0%',
-    label: setLabel(0)
-  })
+  setStatus(index == null ? -1 : index)
 
   return new Promise((resolve, reject) => {
     V[id].requests.reduce((p, r, i) => p.then(res => {
       if (res != null) {
         return res
+      } else if (i <= index) {
+        return null
       } else {
-        status({
-          ...layout,
-          width: `${(100 * (i+1) / V[id].requests.length).toFixed(2)}%`,
-          label: setLabel(i+1)
-        })
-        return run(V[id].requests, M, i, F, {$: V[id].env})
+        setStatus(i)
+        const adaptor = overload => (V, M, id, F, E) => 
+          run(V[id].requests, M, i, F, {
+            $: V[id].env
+          }, adaptor(true)).then(res =>
+            !overload || res ? res : runTest(V, M, id, F, E, status, i)
+          )
+        return adaptor(false)(V, M, id, F, E)
       }
     }), Promise.resolve()).then(res => {
       resolve(res || setLabel(V[id].requests.length))
@@ -330,6 +355,9 @@ export default {
       V.reduce((p, v, id) => p.then(res => {
         res = addMsg(res)
         if (res != null) {
+          res.submit = null
+          res.schema.description = res.schema.description
+            .split('********************')[0]
           return res
         } else {
           return runTest(V, M, id, F, E, status)
