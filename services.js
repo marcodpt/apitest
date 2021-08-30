@@ -193,12 +193,10 @@ const run = (V, M, id, F, E, action) => {
       }
     })
 
-    if (R == null) {
-      const W = V[id].vars
-      Object.keys(W).forEach(key => {
-        E.$[key] = jpath(res, W[key].split('.'))
-      })
-    }
+    const W = V[id].vars
+    Object.keys(W).forEach(key => {
+      E.$[key] = jpath(res, W[key].split('.'))
+    })
     return R
   }
 
