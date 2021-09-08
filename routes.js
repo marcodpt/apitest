@@ -55,6 +55,7 @@ export default [
       'clear',
       'delete',
       'put',
+      'move',
       'runTest',
       'runAll',
       'cors',
@@ -129,6 +130,7 @@ export default [
       'post',
       'delete',
       'put',
+      'move',
       'copy',
       'run'
     ]

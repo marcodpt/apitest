@@ -332,6 +332,27 @@ export default {
       }
     }
   },
+  move: {
+    type: 'info',
+    icon: 'sort',
+    title: 'Move',
+    finish: 'moved',
+    batch: false,
+    description: info => info.trim(),
+    Fields: (V, id) => [
+      {
+        key: 'index',
+        type: 'integer',
+        enum: V.map((row, i) => i + 1),
+        default: id + 1
+      }
+    ],
+    submit: (V, M, id) => {
+      const i = M.index - 1
+      const E = V.splice(id, 1)
+      V.splice(i, 0, E[0])
+    }
+  },
   copy: {
     type: 'success',
     icon: 'copy',
@@ -415,7 +436,7 @@ export default {
       'This will override all data!'
     ].join('\n'),
     refresh: true,
-    Fields: [
+    Fields: V => [
       {
         key: 'file',
         type: 'array',

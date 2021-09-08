@@ -150,13 +150,15 @@ window.addEventListener('load', () => {
             route: route+(S.batch == null ? '/' : '/:id/')+service,
             comp: form,
             mount: (params, status) => {
-              const G = S.Fields || Fields
-              const P = getProp(G, params)
               const Ids = []
               var info = ''
               const pre = getContext(context, X, params)
               const title = `${pre}${S.title} ${S.multiple ? name : item}`
               var V = source(X, params)
+              const G = S.Fields ?
+                S.Fields(V, params.id != null ? parseInt(params.id) : null) :
+                Fields
+              const P = getProp(G, params)
               var E = extra ? extra(X, params) : {}
               var id = null
               
@@ -266,7 +268,10 @@ window.addEventListener('load', () => {
                           F => F.key == key
                         )[0]
                         const v = V[id][key]
-                        P[key].default = F && F.formatter ? F.formatter(v) : v
+                        if (!S.Fields) {
+                          P[key].default = F && F.formatter ?
+                            F.formatter(v) : v
+                        }
                         return P
                       }, P),
                     required: S.description && !S.Fields ? [] : Q
