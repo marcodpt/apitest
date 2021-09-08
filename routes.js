@@ -164,7 +164,7 @@ export default [
         key: 'operator',
         title: 'Operator',
         type: 'string',
-        enum: ['eq', 'ne', 'gt'],
+        enum: ['eq', 'ne', 'gt', 'ct', 'nc'],
         default: 'eq'
       }, {
         key: 'value',

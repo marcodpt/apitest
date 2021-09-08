@@ -101,7 +101,9 @@ const out = (X, E) => render(JSON.stringify(sortKeys(X), undefined, 2), E)
 const Op = {
   eq: (a, b, E) => out(a) == out(b, E),
   ne: (a, b, E) => out(a) != out(b, E),
-  gt: (a, b, E) => parseFloat(a) > parseFloat(b)
+  gt: (a, b, E) => parseFloat(a) > parseFloat(b),
+  ct: (a, b, E) => a.indexOf(b) != -1,
+  nc: (a, b, E) => a.indexOf(b) == -1
 }
 
 const run = (V, M, id, F, E, action) => {
