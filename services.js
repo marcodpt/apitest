@@ -84,10 +84,19 @@ const render = (tpl, X) =>
     ), '')
   )
 
-const out = (X, E) => render(JSON.stringify(X, 
-  X && typeof X == 'object' && !(X instanceof Array) ? 
-    Object.keys(X).sort() : null
-, 2), E)
+const sortKeys = X => {
+  if (!X || typeof X != 'object' || X instanceof Array) {
+    return X
+  }
+  var K = Object.keys(X)
+  K.sort()
+  return K.reduce((Y, key) => {
+    Y[key] = sortKeys(X[key])
+    return Y
+  }, {})
+}
+
+const out = (X, E) => render(JSON.stringify(sortKeys(X), undefined, 2), E)
 
 const Op = {
   eq: (a, b, E) => out(a) == out(b, E),
@@ -282,6 +291,8 @@ const summary = Msg => {
   ].join('\n')
 }
 
+const copy = X => JSON.parse(JSON.stringify(X))
+
 export default {
   post: {
     type: 'success',
@@ -289,7 +300,7 @@ export default {
     title: 'Insert',
     finish: 'added',
     submit: (V, M, id) => {
-      V.push(M)
+      V.push(copy(M))
     }
   },
   delete: {
@@ -327,7 +338,7 @@ export default {
     description: info => ``,
     batch: false,
     submit: (V, M, id) => {
-      V.push(JSON.parse(JSON.stringify(V[id])))
+      V.push(copy(V[id]))
     }
   },
   run: {
