@@ -138,6 +138,12 @@ const run = (V, M, id, F, E, action) => {
 
   const check = res => {
     var R = null
+
+    const W = V[id].vars
+    Object.keys(W).forEach(key => {
+      E.$[key] = jpath(res, W[key].split('.'))
+    })
+
     A.forEach(a => {
       if (R == null) {
         const v = jpath(res, a.expression.split('.'))
@@ -159,24 +165,34 @@ const run = (V, M, id, F, E, action) => {
 
           for (var i = 0, j = 0; i < X.length && j < Y.length; i++, j++) {
             if (X[i] != Y[j]) {
-              const k = i
-              if (Y.indexOf(X[i], j) == -1) {
+              const less = Y.indexOf(X[i]) == -1
+              const more = X.indexOf(Y[j]) == -1
+
+              if (less) {
                 Diff.push('(-):'+X[i])
-              } else {
-                i--
               }
-              if (X.indexOf(Y[j], k) == -1) {
+              if (more) {
                 Diff.push('(+):'+Y[j])
-              } else if (i == k) {
+              }
+
+              if (less && !more) {
                 j--
+              } else if (more && !less) {
+                i--
               }
             }
           }
           while (i < X.length) {
-            Diff.push('(-):'+X[i++])
+            if (Y.indexOf(X[i]) == -1) {
+              Diff.push('(-):'+X[i])
+            }
+            i++
           }
           while (j < Y.length) {
-            Diff.push('(+):'+Y[j++])
+            if (X.indexOf(Y[j]) == -1) {
+              Diff.push('(+):'+Y[j])
+            }
+            j++
           }
 
           R = {
@@ -185,13 +201,15 @@ const run = (V, M, id, F, E, action) => {
               description: [
                 label,
                 `Error: ${a.expression} ${a.operator}`,
-                `***** Diff     *****`
-              ].concat(Diff).concat([
+              ].concat([
                 `***** Expected *****`,
                 x,
                 `***** Result   *****`,
-                y
-              ]).concat(a.operator != 'eq' ? [] : [
+                y,
+                `***** Diff     *****`
+              ]).concat(Diff).concat(a.operator != 'eq' ? [] : [
+                label,
+                `Error: ${a.expression} ${a.operator}`,
                 `********************`,
                 `Do you want to update?`
               ]).join('\n').trim()
@@ -210,10 +228,6 @@ const run = (V, M, id, F, E, action) => {
       }
     })
 
-    const W = V[id].vars
-    Object.keys(W).forEach(key => {
-      E.$[key] = jpath(res, W[key].split('.'))
-    })
     return R
   }
 
@@ -231,7 +245,9 @@ const runSchema = {
 }
 
 const runTest = (V, M, id, F, E, status, index) => {
-  V[id].env = {}
+  if (index == null) {
+    V[id].env = {}
+  }
   const start = + new Date()
   const setLabel = i => {
     const now = + new Date()
