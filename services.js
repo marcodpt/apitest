@@ -162,6 +162,8 @@ const run = (V, M, id, F, E, action) => {
           const Diff = [] 
           const X = x.split('\n')
           const Y = y.split('\n')
+          var add = 0
+          var remove = 0
 
           for (var i = 0, j = 0; i < X.length && j < Y.length; i++, j++) {
             if (X[i] != Y[j]) {
@@ -170,9 +172,11 @@ const run = (V, M, id, F, E, action) => {
 
               if (less) {
                 Diff.push('(-):'+X[i])
+                remove += 1
               }
               if (more) {
                 Diff.push('(+):'+Y[j])
+                add += 1
               }
 
               if (less && !more) {
@@ -185,12 +189,14 @@ const run = (V, M, id, F, E, action) => {
           while (i < X.length) {
             if (Y.indexOf(X[i]) == -1) {
               Diff.push('(-):'+X[i])
+              remove += 1
             }
             i++
           }
           while (j < Y.length) {
             if (X.indexOf(Y[j]) == -1) {
               Diff.push('(+):'+Y[j])
+              add += 1
             }
             j++
           }
@@ -208,8 +214,11 @@ const run = (V, M, id, F, E, action) => {
                 y,
                 `***** Diff     *****`
               ]).concat(Diff).concat(a.operator != 'eq' ? [] : [
+                `***** SUMMARY  *****`,
                 label,
-                `Error: ${a.expression} ${a.operator}`,
+                `${a.expression} ${a.operator}`,
+                `(-): ${remove}`,
+                `(+): ${add}`,
                 `********************`,
                 `Do you want to update?`
               ]).join('\n').trim()
