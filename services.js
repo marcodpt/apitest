@@ -96,10 +96,46 @@ const sortKeys = X => {
   }, {})
 }
 
+const diff = (A, B, E, D, path) => {
+  D = D || []
+  path = path || '$'
+
+  if (A && B && typeof A == 'object' && typeof B == 'object') {
+    const K = Object.keys(A)
+    Object.keys(B).forEach(key => {
+      if (K.indexOf(key) == -1) {
+        K.push(key)
+      }
+    })
+    K.forEach(key => {
+      D = diff(A[key], B[key], E, D, `${path}.${key}`)
+    })
+  } else {
+    if (typeof A == 'string') {
+      A = render(A, E)
+    }
+    if (typeof B == 'string') {
+      B = render(B, E)
+    }
+    if (A !== B) {
+      D = D.concat([
+        `***** DIFF *****`,
+        path,
+        `***** EXPECTED *****`,
+        JSON.stringify(A, undefined, 2),
+        `***** RESULT *****`,
+        JSON.stringify(B, undefined, 2)
+      ])
+    }
+  }
+
+  return D
+}
+
 const out = (X, E) => render(JSON.stringify(sortKeys(X), undefined, 2), E)
 
 const Op = {
-  eq: (a, b, E) => out(a) == out(b, E),
+  eq: (a, b, E) => diff(a, b, E),
   ne: (a, b, E) => out(a) != out(b, E),
   gt: (a, b, E) => parseFloat(a) > parseFloat(b),
   ct: (a, b, E) => a.indexOf(b) != -1,
@@ -147,7 +183,38 @@ const run = (V, M, id, F, E, action) => {
     A.forEach(a => {
       if (R == null) {
         const v = jpath(res, a.expression.split('.'))
-        if (Op[a.operator] == null) {
+        if (a.operator == 'eq') {
+          const Diff = diff(a.value, v, E)
+          if (Diff.length) {
+            const n = Diff.reduce(
+              (n, row) => row == `***** DIFF *****` ? n+1 : n
+            , 0)
+            R = {
+              schema: {
+                title: F.schema.title,
+                description: [
+                  label,
+                  `Error(${n}): ${a.expression} ${a.operator}`,
+                ].concat(Diff).concat([
+                  `***** SUMMARY  *****`,
+                  label,
+                  `Error(${n}): ${a.expression} ${a.operator}`,
+                  `********************`,
+                  `Do you want to update?`
+                ]).join('\n').trim()
+              },
+              back: F.back,
+              alert: 'danger',
+              submit: (V, M, xid, F, E) => {
+                a.value = v
+                return check(res) || (action ?
+                  action(V, M, xid, F, E) :
+                  run(V, M, xid, F, E, action)
+                )
+              }
+            }
+          }
+        } else if (Op[a.operator] == null) {
           R = {
             schema: {
               title: F.schema.title,
@@ -157,50 +224,6 @@ const run = (V, M, id, F, E, action) => {
             back: F.back
           }
         } else if (!Op[a.operator](v, a.value, E)) {
-          const x = out(a.value, E)
-          const y = out(v)
-          const Diff = [] 
-          const X = x.split('\n')
-          const Y = y.split('\n')
-          var add = 0
-          var remove = 0
-
-          for (var i = 0, j = 0; i < X.length && j < Y.length; i++, j++) {
-            if (X[i] != Y[j]) {
-              const less = Y.indexOf(X[i]) == -1
-              const more = X.indexOf(Y[j]) == -1
-
-              if (less) {
-                Diff.push('(-):'+X[i])
-                remove += 1
-              }
-              if (more) {
-                Diff.push('(+):'+Y[j])
-                add += 1
-              }
-
-              if (less && !more) {
-                j--
-              } else if (more && !less) {
-                i--
-              }
-            }
-          }
-          while (i < X.length) {
-            if (Y.indexOf(X[i]) == -1) {
-              Diff.push('(-):'+X[i])
-              remove += 1
-            }
-            i++
-          }
-          while (j < Y.length) {
-            if (X.indexOf(Y[j]) == -1) {
-              Diff.push('(+):'+Y[j])
-              add += 1
-            }
-            j++
-          }
-
           R = {
             schema: {
               title: F.schema.title,
@@ -209,29 +232,13 @@ const run = (V, M, id, F, E, action) => {
                 `Error: ${a.expression} ${a.operator}`,
               ].concat([
                 `***** Expected *****`,
-                x,
+                out(a.value, E),
                 `***** Result   *****`,
-                y,
-                `***** Diff     *****`
-              ]).concat(Diff).concat(a.operator != 'eq' ? [] : [
-                `***** SUMMARY  *****`,
-                label,
-                `${a.expression} ${a.operator}`,
-                `(-): ${remove}`,
-                `(+): ${add}`,
-                `********************`,
-                `Do you want to update?`
+                out(v),
               ]).join('\n').trim()
             },
             back: F.back,
-            alert: 'danger',
-            submit: a.operator != 'eq' ? null : (V, M, xid, F, E) => {
-              a.value = v
-              return check(res) || (action ?
-                action(V, M, xid, F, E) :
-                run(V, M, xid, F, E, action)
-              )
-            }
+            alert: 'danger'
           }
         }
       }
