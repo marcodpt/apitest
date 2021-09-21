@@ -122,9 +122,9 @@ const diff = (A, B, E, D, path) => {
         `***** DIFF *****`,
         path,
         `***** EXPECTED *****`,
-        JSON.stringify(A, undefined, 2),
+        typeof A == 'string' ? A : JSON.stringify(A, undefined, 2),
         `***** RESULT *****`,
-        JSON.stringify(B, undefined, 2)
+        typeof B == 'string' ? B : JSON.stringify(B, undefined, 2)
       ])
     }
   }
