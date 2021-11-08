@@ -71,7 +71,8 @@ export default [
     extra: (Data, {test_id}) => ({
       $: Data[test_id].env
     }),
-    label: Row => Row.method+' '+Row.url+'?'+query(Row.params),
+    label: Row => Row.method+' '+Row.url+
+      (Row.url.indexOf('?') != -1 ? '&' : '?')+query(Row.params),
     totals: Data => Data.reduce((T, row) => {
       T.index += 1
       T.assertions += row.assertions

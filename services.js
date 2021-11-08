@@ -148,11 +148,15 @@ const run = (V, M, id, F, E, action) => {
   const url = render(V[id].url, E)
   const A = V[id].assertions
   const q = query(params)
-  const label = `${id+1}: ${method} ${url+(q ? '?' : '')+q}`
+  const label = `${id+1}: ${method} ${url+
+      (q ? (url.indexOf('?') != -1 ? '&' : '?') : '')+q
+  }`
   const host = localStorage.getItem('HOST') || ''
   const p = new Promise ((resolve, reject) => {
     axios({
-      url: host+url+(method != 'GET' ? '' : ((q ? '?' : '')+q)),
+      url: host+url+(method != 'GET' ? '' :
+        ((q ? (url.indexOf('?') != -1 ? '&' : '?') : '')+q)
+      ),
       method: method,
       data: method == 'GET' ? null : params
     }).then(res => {
