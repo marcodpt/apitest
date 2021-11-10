@@ -111,6 +111,14 @@ export default [
         parser: X => fromStr(X),
         formatter: X => toStr(X)
       }, {
+        key: 'headers',
+        title: 'Headers (json)',
+        type: 'string',
+        default: '{}',
+        format: 'text',
+        parser: X => fromStr(X),
+        formatter: X => toStr(X)
+      }, {
         key: 'assertions',
         title: 'Assertions',
         type: 'integer',

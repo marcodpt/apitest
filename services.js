@@ -145,6 +145,7 @@ const Op = {
 const run = (V, M, id, F, E, action) => {
   const method = V[id].method
   const params = JSON.parse(render(JSON.stringify(V[id].params), E))
+  const headers = JSON.parse(render(JSON.stringify(V[id].headers), E))
   const url = render(V[id].url, E)
   const A = V[id].assertions
   const q = query(params)
@@ -158,6 +159,7 @@ const run = (V, M, id, F, E, action) => {
         ((q ? (url.indexOf('?') != -1 ? '&' : '?') : '')+q)
       ),
       method: method,
+      headers: headers,
       data: method == 'GET' ? null : params
     }).then(res => {
       resolve({
