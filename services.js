@@ -154,6 +154,14 @@ const run = (V, M, id, F, E, action) => {
   }`
   const host = localStorage.getItem('HOST') || ''
   const p = new Promise ((resolve, reject) => {
+    var Headers = {
+      mime: 'Content-Type',
+      disposition: 'Content-Disposition'
+    }
+    var getHeaders = (res) => Object.keys(Headers).reduce((H, key) => {
+      H[key] = res.headers.get(Headers[key])
+      return H
+    }, {})
     axios({
       url: host+url+(method != 'GET' ? '' :
         ((q ? (url.indexOf('?') != -1 ? '&' : '?') : '')+q)
@@ -162,18 +170,17 @@ const run = (V, M, id, F, E, action) => {
       headers: headers,
       data: method == 'GET' ? null : params
     }).then(res => {
+      res.headers.forEach((value, key) => {
+        console.log(`${key}: ${value}`)
+      })
       resolve({
-        ...res,
-        mime: res.headers.get('Content-Type')
+        ...getHeaders(res),
+        ...res
       })
     }).catch(res => {
-      var mime = ''
-      try {
-        mime = res.headers.get('Content-Type')
-      } catch (err) {}
       reject({
-        ...res,
-        mime: mime
+        ...getHeaders(res),
+        ...res
       })
     })
   })
