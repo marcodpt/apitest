@@ -170,9 +170,6 @@ const run = (V, M, id, F, E, action) => {
       headers: headers,
       data: method == 'GET' ? null : params
     }).then(res => {
-      res.headers.forEach((value, key) => {
-        console.log(`${key}: ${value}`)
-      })
       resolve({
         ...getHeaders(res),
         ...res
