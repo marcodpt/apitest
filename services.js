@@ -138,8 +138,8 @@ const Op = {
   eq: (a, b, E) => diff(a, b, E),
   ne: (a, b, E) => out(a) != out(b, E),
   gt: (a, b, E) => parseFloat(a) > parseFloat(b),
-  ct: (a, b, E) => a.indexOf(b) != -1,
-  nc: (a, b, E) => a.indexOf(b) == -1
+  ct: (a, b, E) => a != null && a.indexOf(b) != -1,
+  nc: (a, b, E) => a != null && a.indexOf(b) == -1
 }
 
 const run = (V, M, id, F, E, action) => {
