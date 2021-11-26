@@ -159,7 +159,9 @@ const run = (V, M, id, F, E, action) => {
       disposition: 'Content-Disposition'
     }
     var getHeaders = (res) => Object.keys(Headers).reduce((H, key) => {
-      H[key] = res.headers.get(Headers[key])
+      if (res.headers != null) {
+        H[key] = res.headers.get(Headers[key])
+      }
       return H
     }, {})
     axios({
