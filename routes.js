@@ -100,8 +100,7 @@ export default [
         key: 'url',
         title: 'URL',
         type: 'string',
-        default: '',
-        minLength: 1
+        default: ''
       }, {
         key: 'params',
         title: 'Params (json)',
