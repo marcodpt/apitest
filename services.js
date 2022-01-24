@@ -458,17 +458,27 @@ export default {
     title: 'Save',
     description: info => '',
     finish: '',
-    submit: () => {
+    submit: (V, M, id, F) => {
       var link = document.createElement('a')
       link.setAttribute('href',
         'data:text/plain;charset=utf-8,'+
         encodeURIComponent(localStorage.getItem('DATA'))
       )
-      link.setAttribute('download', 'tests.json')
+      link.setAttribute(
+        'download',
+        localStorage.getItem('FILENAME') || 'tests.json'
+      )
       document.body.appendChild(link)
       link.click()
       link.parentNode.removeChild(link)
       history.back()
+      return {
+        schema: {
+          title: F.schema.title,
+          description: 'Saving...'
+        },
+        alert: 'success'
+      }
     }
   },
   import: {
@@ -503,6 +513,7 @@ export default {
           'DATA',
           JSON.stringify(JSON.parse(data), undefined, 2)
         )
+        localStorage.setItem('FILENAME', M.file[0].name)
         return {
           schema: {
             title: F.schema.title,
