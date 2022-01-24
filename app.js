@@ -10,6 +10,7 @@ var X = null
 const load = () => {
   try {
     X = JSON.parse(localStorage.getItem('DATA')) || []
+    localStorage.setItem('MODIFIED', '')
   } catch (err) {
     X = []
   }
@@ -192,70 +193,79 @@ window.addEventListener('load', () => {
                 }
               } else {
                 const Q = Object.keys(P)
-                const run = submitter => M => {
-                  const Data = G.reduce((M, F) => {
-                    if (F.get) {
-                      if (F[service] && M[F.key] == null) {
-                        M[F.key] = F[service]
+                const run = submitter => {
+                  if (S.block && S.block()) {
+                    return null
+                  } else {
+                    return M => {
+                      const Data = G.reduce((M, F) => {
+                        if (F.get) {
+                          if (F[service] && M[F.key] == null) {
+                            M[F.key] = F[service]
+                          }
+                        } else if (F.parser && M[F.key] != null) {
+                          M[F.key] = F.parser(M[F.key])
+                        }
+                        return M
+                      }, {...M})
+                      const Msg = []
+                      const addMsg = X => {
+                        if (typeof X == 'string') {
+                          if (X) {
+                            Msg.push(X)
+                          }
+                          X = null
+                        }
+                        return X
                       }
-                    } else if (F.parser && M[F.key] != null) {
-                      M[F.key] = F.parser(M[F.key])
+                      return Ids.reduce((p, id) => p.then(res => {
+                        res = addMsg(res)
+                        if (res != null) {
+                          return res
+                        } else {
+                          return submitter(V, Data, id, R, E, status)
+                        }
+                      }), Promise.resolve()).then(W => {
+                        W = addMsg(W)
+                        if (S.refresh) {
+                          load()
+                        } else {
+                          if (!S.save) {
+                            localStorage.setItem('MODIFIED', 'YES')
+                          }
+                          localStorage.setItem(
+                            'DATA',
+                            JSON.stringify(X, undefined, 2)
+                          )
+                        }
+                        if (!S.multiple) {
+                          info = info || label(Data)
+                        }
+                        if (Msg.length) {
+                          info = '\n - '+Msg.join('\n - ')+'\n'
+                          if (S.summary) {
+                            info += S.summary(Msg)+'\n'
+                          }
+                        } 
+
+                        if (W && W.submit) {
+                          W.submit = run(W.submit)
+                        }
+
+                        return W || {
+                          schema: {
+                            type: 'object',
+                            title: title,
+                            description: S.multiple ? 
+                              `${name}: ${Msg.length ? info+' ' : ''}${S.finish}` :
+                              `${item}: ${info} ${S.finish}!`
+                          },
+                          alert: 'success',
+                          back: back
+                        }
+                      })
                     }
-                    return M
-                  }, {...M})
-                  const Msg = []
-                  const addMsg = X => {
-                    if (typeof X == 'string') {
-                      if (X) {
-                        Msg.push(X)
-                      }
-                      X = null
-                    }
-                    return X
                   }
-                  return Ids.reduce((p, id) => p.then(res => {
-                    res = addMsg(res)
-                    if (res != null) {
-                      return res
-                    } else {
-                      return submitter(V, Data, id, R, E, status)
-                    }
-                  }), Promise.resolve()).then(W => {
-                    W = addMsg(W)
-                    if (S.refresh) {
-                      load()
-                    } else {
-                      localStorage.setItem(
-                        'DATA',
-                        JSON.stringify(X, undefined, 2)
-                      )
-                    }
-                    if (!S.multiple) {
-                      info = info || label(Data)
-                    }
-                    if (Msg.length) {
-                      info = '\n - '+Msg.join('\n - ')+'\n'
-                      if (S.summary) {
-                        info += S.summary(Msg)+'\n'
-                      }
-                    } 
-
-                    if (W && W.submit) {
-                      W.submit = run(W.submit)
-                    }
-
-                    return W || {
-                      schema: {
-                        type: 'object',
-                        title: title,
-                        description: S.multiple ? 
-                          `${name}: ${Msg.length ? info+' ' : ''}${S.finish}` :
-                          `${item}: ${info} ${S.finish}!`
-                      },
-                      alert: 'success',
-                      back: back
-                    }
-                  })
                 }
                 const R = {
                   schema: {
@@ -276,7 +286,7 @@ window.addEventListener('load', () => {
                       }, P),
                     required: S.description && !S.Fields ? [] : Q
                   },
-                  alert: 'info',
+                  alert: S.block && S.block() ? 'danger' : 'info',
                   back: back,
                   submit: run(S.submit)
                 }

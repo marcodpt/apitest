@@ -458,6 +458,7 @@ export default {
     title: 'Save',
     description: info => '',
     finish: '',
+    save: true,
     submit: (V, M, id, F) => {
       var link = document.createElement('a')
       link.setAttribute('href',
@@ -471,6 +472,7 @@ export default {
       document.body.appendChild(link)
       link.click()
       link.parentNode.removeChild(link)
+      localStorage.setItem('MODIFIED', '')
       history.back()
       return {
         schema: {
@@ -485,18 +487,34 @@ export default {
     type: 'light',
     icon: 'file',
     title: 'Import',
-    description: info => [
-      'Are you sure to import file?',
-      'This will override all data!'
-    ].join('\n'),
-    refresh: true,
-    Fields: V => [
-      {
-        key: 'file',
-        type: 'array',
-        format: 'file'
+    description: info => {
+      if (localStorage.getItem('MODIFIED') == 'YES') {
+        return [
+          'THIS FILE ALREADY BEEN MODIFIED!',
+          'OPERATION NOT ALLOWED!'
+        ].join('\n')
+      } else {
+        return [
+          'Are you sure to import file?',
+          'This will override all data!'
+        ].join('\n')
       }
-    ],
+    },
+    refresh: true,
+    Fields: V => {
+      if (localStorage.getItem('MODIFIED') == 'YES') {
+        return []
+      } else {
+        return [
+          {
+            key: 'file',
+            type: 'array',
+            format: 'file'
+          }
+        ]
+      }
+    },
+    block: () => localStorage.getItem('MODIFIED') == 'YES',
     submit: (V, M, id, F) =>
       new Promise((resolve, reject) => {
         var reader = new FileReader()
