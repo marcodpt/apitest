@@ -194,7 +194,7 @@ const run = (V, M, id, F, E, action) => {
 
     A.forEach(a => {
       if (R == null) {
-        const v = jpath(res, a.expression.split('.'))
+        const v = jpath(res, a.expression.split("\n").join(",").split('.'))
         if (a.operator == 'eq') {
           const Diff = diff(a.value, v, E)
           if (Diff.length) {

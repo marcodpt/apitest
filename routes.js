@@ -169,6 +169,7 @@ export default [
         key: 'expression',
         title: 'Expression',
         type: 'string',
+        format: 'text',
         default: 'data'
       }, {
         key: 'operator',
