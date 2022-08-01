@@ -60,7 +60,8 @@ export default [
       'runAll',
       'cors',
       'github',
-      'copy'
+      'copy',
+      'hurl'
     ]
   }, {
     route: '#/tests/:test_id/requests',

@@ -16,5 +16,9 @@ For example in Firefox
 [this addon](https://addons.mozilla.org/pt-BR/firefox/addon/cors-everywhere/)
 do the job for me!
 
+## TODO
+ - regex support
+ - delete blank strings
+
 ## Contributing
 No guidelines, any contribution is greatly appreciated!

@@ -408,6 +408,118 @@ export default {
       V.push(copy(V[id]))
     }
   },
+  hurl: {
+    type: 'secondary',
+    icon: 'exchange-alt',
+    title: 'Hurl',
+    description: info => '',
+    finish: '',
+    batch: false,
+    submit: (V, M, id, F) => {
+      const fixRender = str => {
+        str = str.replace(/"\{\$\.(.+)\}"/g, (a, b) => `{{${b}}}`)
+        str = str.replace(/\{\$\.(.+)\}/g, (a, b) => `{{${b}}}`)
+        return str
+      }
+
+      var data = ''
+      V[id].requests.forEach(({
+        method,
+        url,
+        headers,
+        params,
+        vars,
+        assertions
+      }) => {
+        data += `${method} ${fixRender(url)}\n`
+
+        Object.keys(headers || {}).forEach(key => {
+          data += `${key}: ${headers[key]}\n`
+        })
+
+        if (method != 'GET' && params) {
+          data += fixRender(JSON.stringify(params, undefined, 2))+'\n'
+        } else if (method == 'GET' && params && Object.keys(params).length) {
+          data += '[QueryStringParams]\n'
+          Object.keys(params).forEach(key => {
+            data += `${key}: ${fixRender(params[key])}`
+          })
+        }
+
+        var status = 200
+        var mime = ''
+        var body = ''
+        var Asserts = assertions.filter(({
+          expression,
+          operator,
+          value
+        }) => {
+          const isStatus = expression == 'status'
+          const isFixed = isStatus && operator == 'eq'
+          const isMime = expression == 'mime' && operator == 'eq'
+          const isBody = expression == 'data' && operator == 'eq'
+
+          if (isFixed) {
+            status = value
+          } else if (isStatus) {
+            status = '*'
+          } else if (isMime) {
+            mime = value
+          } else if (isBody) {
+            body = fixRender(JSON.stringify(value, undefined, 2))
+          }
+
+          return !isFixed && !isMime && !isBody
+        }).map(({
+          expression,
+          operator,
+          value
+        }) => {
+          var op = ''
+          if (operator == 'eq') {
+            op = '=='
+          } else if (operator == 'ne') {
+            op = '!='
+          } else if (operator == 'gt') {
+            op = '>='
+          } else {
+            throw `unknown operator: ${operator}`
+          }
+        })
+
+        data += `HTTP/1.1 ${status}\n`
+
+        if (mime) {
+          data += `Content-Type: ${mime}\n`
+        }
+
+        if (body) {
+          data += `${body}\n`
+        }
+
+        data += '\n'
+      })
+      data = data.trim()
+
+      var link = document.createElement('a')
+      link.setAttribute('href',
+        'data:text/plain;charset=utf-8,'+
+        encodeURIComponent(data)
+      )
+      link.setAttribute('download', V[id].name+'.hurl')
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      history.back()
+      return {
+        schema: {
+          title: F.schema.title,
+          description: 'Saving...'
+        },
+        alert: 'success'
+      }
+    }
+  },
   run: {
     ...runSchema,
     batch: true,
