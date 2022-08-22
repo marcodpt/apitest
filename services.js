@@ -610,7 +610,8 @@ export default {
       if (localStorage.getItem('MODIFIED') == 'YES') {
         return [
           'THIS FILE ALREADY BEEN MODIFIED!',
-          'OPERATION NOT ALLOWED!'
+          'Are you sure to import file?',
+          'This will override all data!'
         ].join('\n')
       } else {
         return [
@@ -620,20 +621,13 @@ export default {
       }
     },
     refresh: true,
-    Fields: V => {
-      if (localStorage.getItem('MODIFIED') == 'YES') {
-        return []
-      } else {
-        return [
-          {
-            key: 'file',
-            type: 'array',
-            format: 'file'
-          }
-        ]
+    Fields: V => [
+      {
+        key: 'file',
+        type: 'array',
+        format: 'file'
       }
-    },
-    block: () => localStorage.getItem('MODIFIED') == 'YES',
+    ],
     submit: (V, M, id, F) =>
       new Promise((resolve, reject) => {
         var reader = new FileReader()
