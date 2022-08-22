@@ -76,13 +76,20 @@ const jpath = (X, P, inside) => {
   return typeof R == 'string' && inside ? R.split('\n').join('\\n') : R
 }
 
-const render = (tpl, X) => 
-  tpl.replace(
-    /\{\$\.([A-Za-z0-9_\.]+?)\}/g,
-    (str, path) => maybe(jpath(
-      X, ['$'].concat(path.split('.')), X != null
-    ), '')
-  )
+const render = (tpl, X) => {
+  if (/^\$(\.[A-Za-z0-9_\.]+)+!$/.test(tpl)) {
+    return maybe(jpath(
+      X, ['$'].concat(tpl.substr(2, tpl.length - 3).split('.')), X != null
+    ), null)
+  } else {
+    return tpl.replace(
+      /\{\$\.([A-Za-z0-9_\.]+?)\}/g,
+      (str, path) => maybe(jpath(
+        X, ['$'].concat(path.split('.')), X != null
+      ), '')
+    )
+  }
+}
 
 const sortKeys = X => {
   if (!X || typeof X != 'object' || X instanceof Array) {
