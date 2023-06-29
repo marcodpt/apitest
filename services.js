@@ -176,7 +176,11 @@ const run = (V, M, id, F, E, action) => {
         ((q ? (url.indexOf('?') != -1 ? '&' : '?') : '')+q)
       ),
       method: method,
-      headers: headers,
+      headers: {
+        pragma: 'no-cache',
+        'cache-control': 'no-cache',
+        ...headers
+      },
       data: method == 'GET' ? null : params
     }).then(res => {
       resolve({
