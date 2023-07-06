@@ -123,6 +123,9 @@ const diff = (A, B, E, D, path) => {
     }
     if (typeof B == 'string') {
       B = render(B, E)
+      if (typeof A == 'string') {
+        A = A.split('\\n').join('\n')
+      }
     }
     if (A !== B) {
       D = D.concat([
@@ -139,14 +142,16 @@ const diff = (A, B, E, D, path) => {
   return D
 }
 
-const out = (X, E) => render(JSON.stringify(sortKeys(X), undefined, 2), E)
+const out = (X, E) => render(
+  typeof X == 'string' ? X : JSON.stringify(sortKeys(X), undefined, 2), E
+).split('\\n').join('\n')
 
 const Op = {
   eq: (a, b, E) => diff(a, b, E),
   ne: (a, b, E) => out(a) != out(b, E),
   gt: (a, b, E) => parseFloat(a) > parseFloat(b),
-  ct: (a, b, E) => a != null && a.indexOf(b) != -1,
-  nc: (a, b, E) => a != null && a.indexOf(b) == -1
+  ct: (a, b, E) => a != null && a.indexOf(out(b, E)) != -1,
+  nc: (a, b, E) => a != null && a.indexOf(out(b, E)) == -1
 }
 
 const run = (V, M, id, F, E, action) => {
